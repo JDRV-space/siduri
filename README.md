@@ -2,11 +2,7 @@
 
 # Siduri
 
----
-
-**Self-Hosted Video Hosting with Viewer Analytics**
-
-*A personal alternative to Vidyard and Loom. Record, host, share, and track — all on your own infrastructure.*
+Self-hosted video hosting with viewer analytics. A personal alternative to Vidyard and Loom: record, host, share, and track on your own infrastructure.
 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-4-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
@@ -20,8 +16,6 @@
 [Features](#features) · [Screenshots](#screenshots) · [Architecture](#architecture) · [Installation](#installation) · [Configuration](#configuration) · [Deployment](#deployment) · [API](#api-endpoints) · [License](#license)
 
 </div>
-
----
 
 ## Features
 
@@ -39,7 +33,6 @@
 - **JWT Authentication** - Secure login with rate limiting
 - **Password Reset** - Email-based password recovery flow
 
----
 
 ## Screenshots
 
@@ -47,7 +40,6 @@
 |-----------|-----------|
 | ![Recording](docs/screenshot-record.png) | ![Dashboard](docs/screenshot-dashboard.png) |
 
----
 
 ## Tech Stack
 
@@ -64,7 +56,6 @@
 | **Notifications** | Nodemailer | Email notifications |
 | **Optional** | faster-whisper | Automatic subtitles |
 
----
 
 ## Architecture
 
@@ -117,7 +108,6 @@
 3. **Playback**: Video.js loads video from GCS, auto-loads subtitles if available
 4. **Tracking**: Player sends heartbeats to `/api/track` → stores watch time → triggers email notifications
 
----
 
 ## Prerequisites
 
@@ -151,7 +141,6 @@ Before you begin, ensure you have:
    gsutil cors set cors.json gs://YOUR_BUCKET_NAME
    ```
 
----
 
 ## Installation
 
@@ -219,7 +208,6 @@ Navigate to `http://localhost:8080`
 3. **First user** becomes the owner (no invitation needed)
 4. Additional users require an invitation code (owner can generate these in the app)
 
----
 
 ## Configuration
 
@@ -272,7 +260,6 @@ SMTP_PASS=app-specific-password
 SMTP_FROM=Video Notifications <notifications@mycompany.com>
 ```
 
----
 
 ## Development
 
@@ -358,7 +345,6 @@ siduri/
 | PUT | `/api/settings` | Yes | Update notification settings |
 | GET | `/health` | No | Health check |
 
----
 
 ## Deployment
 
@@ -443,7 +429,6 @@ docker run -p 8080:8080 \
   siduri
 ```
 
----
 
 ## Automatic Subtitles (Optional)
 
@@ -467,7 +452,6 @@ See `functions/video-subtitles/README.md` for deployment instructions.
 - Cloud Function: ~$0.001-0.002 per 5-minute video
 - Processing time: ~1-2 minutes per minute of video
 
----
 
 ## Limitations
 
@@ -477,7 +461,6 @@ See `functions/video-subtitles/README.md` for deployment instructions.
 - **SQLite** - Not suitable for high-traffic production (consider PostgreSQL for scale)
 - **Background blur** - Requires MediaPipe, which needs WebGL support in browser
 
----
 
 ## Security Notes
 
@@ -489,7 +472,6 @@ See `functions/video-subtitles/README.md` for deployment instructions.
 - Helmet.js for HTTP security headers
 - Content Security Policy configured (allows MediaPipe WebAssembly and CDN resources)
 
----
 
 ## Contributing
 
@@ -499,12 +481,9 @@ See `functions/video-subtitles/README.md` for deployment instructions.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
----
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-
----
 
 Built by [@JDRV-space](https://github.com/JDRV-space)
