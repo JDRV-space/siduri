@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="/video/studio/">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>siduri</title>
+  <link rel="stylesheet" href="css/siduri.css">
+  <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet"
+        integrity="sha384-tFXa23e+aajUXEEQBum5/6q0Cq9+dJaDFPH5nk4lyG8NK9SbKo5AlZ4LtVHzyFH0"
+        crossorigin="anonymous">
+  <style>
+    /* Video.js Siduri theme overrides */
+    .video-js {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .video-js .vjs-big-play-button {
+      display: none; /* We use custom overlay */
+    }
+    .video-js .vjs-control-bar {
+      background: rgba(7, 9, 16, 0.9);
+      height: 40px;
+    }
+    .video-js .vjs-play-progress,
+    .video-js .vjs-volume-level {
+      background: rgba(255, 255, 255, 0.8);
+    }
+    .video-js .vjs-slider {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    .video-js .vjs-time-control {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.85rem;
+    }
+    .video-js .vjs-control:focus,
+    .video-js .vjs-control:hover {
+      color: rgba(255, 255, 255, 1);
+    }
+  </style>
+</head>
+<body>
+  <!-- Branding -->
+  <div style="text-align: center; padding: 1.5rem 0 1rem;">
+    <span class="logo" style="font-size: 1.5rem;">siduri</span>
+  </div>
+
+  <div class="player-container">
+    <div class="player-wrapper">
+      <video
+        id="videoPlayer"
+        class="video-js vjs-big-play-centered"
+        controls
+        preload="auto"
+        crossorigin="anonymous"
+      >
+        <p class="vjs-no-js">
+          JavaScript is required to view this video.
+        </p>
+      </video>
+
+      <!-- Custom play overlay -->
+      <div class="start-overlay" id="startOverlay">
+        <div class="play-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </div>
+        <p class="start-text">click to play</p>
+      </div>
+
+      <!-- Captions overlay -->
+      <div class="captions-overlay" id="captionsOverlay"></div>
+    </div>
+
+    <!-- Subtitle controls -->
+    <div class="subtitle-controls" id="subtitleControls" style="margin-top: 1rem;">
+      <button class="subtitle-btn" data-lang="off">off</button>
+      <button class="subtitle-btn active" data-lang="es">CC</button>
+    </div>
+
+    <!-- Video info -->
+    <div class="card" style="margin-top: 1.5rem;" id="videoInfo">
+      <div class="glow"></div>
+      <div>
+        <h2 id="videoTitle" style="margin-bottom: 0.5rem;">loading...</h2>
+        <p class="video-meta" id="videoMeta"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://vjs.zencdn.net/8.6.1/video.min.js"
+          integrity="sha384-7WJd15qzjuxEd6cGsqMXUooY6KsQuT9lKEkD7sFJVQKpTh3I5MbGcoGoJEMzNZJf"
+          crossorigin="anonymous"></script>
+  <script src="js/player.js"></script>
+</body>
+</html>

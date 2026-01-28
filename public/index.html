@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="/video/studio/">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>siduri</title>
+  <link rel="stylesheet" href="css/siduri.css">
+</head>
+<body>
+  <!-- Login Modal -->
+  <div class="modal" id="loginModal">
+    <div class="modal-content">
+      <div class="modal-icon">
+        <img src="img/icon_01.svg" alt="siduri">
+      </div>
+      <div class="modal-copy">
+        <h2>siduri</h2>
+        <div class="modal-lead">
+          <input type="email" id="emailInput" placeholder="email" autocomplete="email">
+          <input type="password" id="passwordInput" placeholder="password" autocomplete="current-password">
+          <button class="btn btn-primary" id="loginBtn">enter</button>
+          <p id="loginError" style="color: var(--error); margin-top: 0.5rem; display: none;"></p>
+          <a href="forgot-password.html" style="display: block; margin-top: 1rem; color: var(--text-secondary); font-size: 0.875rem; text-decoration: none;">forgot password?</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <header class="header">
+    <a href="./" class="logo">siduri</a>
+    <nav class="nav">
+      <a href="./" class="active">create</a>
+      <a href="dashboard">dashboard</a>
+      <a href="settings">settings</a>
+      <a href="#" id="logoutBtn">exit</a>
+    </nav>
+  </header>
+
+  <main class="container record-container" id="mainContent" style="display: none;">
+    <!-- Centered recording interface -->
+    <div style="display: flex; flex-direction: column; align-items: center; padding: 5rem 0 2rem;">
+      <!-- Video Title Input - centered -->
+      <div style="margin-bottom: 1.5rem; width: 100%; max-width: 800px;">
+        <input type="text" id="videoTitle" placeholder="video title (optional)"
+          style="width: 100%; padding: 0.75rem 1rem; background: var(--bg-secondary);
+          border: 1px solid var(--border); border-radius: 999px; color: var(--text-primary);
+          font-family: 'Space Grotesk', sans-serif; font-size: 1rem;">
+      </div>
+
+      <!-- Tabs - centered -->
+      <div class="tabs" style="margin-bottom: 1.5rem;">
+        <button class="tab active" data-tab="record">record</button>
+        <button class="tab" data-tab="upload">upload</button>
+      </div>
+
+      <!-- Main recording card - full width centered -->
+      <div class="card fade-in-up" style="width: 100%; max-width: 1000px; flex-direction: column;">
+        <div class="glow"></div>
+
+      <!-- Record Tab -->
+      <div id="recordTab" class="tab-content">
+        <div class="record-zone">
+          <div class="record-preview">
+            <video id="previewVideo" autoplay muted playsinline></video>
+            <canvas id="bgCanvas" style="display: none;"></canvas>
+            <img id="bgImage" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">
+            <!-- Fullscreen button -->
+            <button id="fullscreenBtn" style="position: absolute; top: 10px; right: 10px; z-index: 10;
+              background: rgba(0,0,0,0.5); border: none; color: white; padding: 8px 12px;
+              border-radius: 6px; cursor: pointer; font-size: 14px;">⛶</button>
+          </div>
+
+          <!-- Background Options -->
+          <div class="bg-options">
+            <div class="bg-option none active" data-bg="none" title="No background"></div>
+            <div class="bg-option" data-bg="blur" title="Light Blur">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width: 24px; height: 24px; margin: 10px;"><circle cx="12" cy="12" r="8" opacity="0.3"/></svg>
+            </div>
+            <div class="bg-option" data-bg="superblur" title="Super Blur" style="background: linear-gradient(135deg, rgba(100,100,150,0.5), rgba(50,50,100,0.8));">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="width: 24px; height: 24px; margin: 10px;"><circle cx="12" cy="12" r="10" opacity="0.6"/></svg>
+            </div>
+            <div class="bg-option" data-bg="img/bg-office.svg" style="background: url('img/bg-office.svg') center/cover;" title="Office"></div>
+            <div class="bg-option" data-bg="img/bg-gradient.svg" style="background: url('img/bg-gradient.svg') center/cover;" title="Gradient"></div>
+            <div class="bg-option" data-bg="img/bg-dark.svg" style="background: url('img/bg-dark.svg') center/cover;" title="Dark"></div>
+            <div class="bg-option custom" data-bg="custom" title="Custom">
+              <span style="font-size: 20px;">+</span>
+            </div>
+            <input type="file" id="customBgInput" accept="image/*" hidden>
+          </div>
+
+          <div class="record-controls">
+            <span class="record-timer" id="recordTimer">0:00</span>
+            <button class="record-btn" id="recordBtn">
+              <span class="record-btn-inner"></span>
+            </button>
+            <span style="min-width: 80px;"></span>
+          </div>
+        </div>
+
+        <div id="recordStatus" style="margin-top: 1rem; text-align: center;"></div>
+      </div>
+
+      <!-- Upload Tab -->
+      <div id="uploadTab" class="tab-content" style="display: none;">
+        <div class="upload-zone" id="uploadZone">
+          <div class="upload-icon">
+            <svg viewBox="0 0 48 48" fill="none" style="width: 48px; height: 48px;">
+              <path d="M24 4L12 16h8v16h8V16h8L24 4z" fill="#8b0d1d"/>
+              <rect x="8" y="36" width="32" height="4" rx="2" fill="#3a3d46"/>
+            </svg>
+          </div>
+          <p class="upload-text">drag & drop video here</p>
+          <p class="upload-hint">or click to browse (mp4 or webm - max 100mb)</p>
+          <input type="file" id="fileInput" accept="video/mp4,video/webm" hidden>
+        </div>
+
+        <div class="progress-bar" id="progressBar" style="display: none;">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div id="uploadStatus" style="margin-top: 1rem; text-align: center;"></div>
+      </div>
+
+      <!-- Result (shared) -->
+      <div id="result" style="display: none; margin-top: 1.5rem;">
+        <h3 style="margin-bottom: 1rem;">video ready</h3>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+          <input type="text" id="trackingUrl" readonly
+            style="flex: 1; padding: 0.75rem 1rem; background: var(--bg-secondary);
+            border: 1px solid var(--border); border-radius: 999px; color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif; min-width: 200px; max-width: 500px;">
+          <button class="btn" onclick="copyUrl()">copy link</button>
+          <button class="btn" onclick="previewVideo()">preview</button>
+          <a href="dashboard" class="btn btn-primary">view dashboard</a>
+        </div>
+      </div>
+      </div><!-- end card -->
+
+      <!-- How Tracking Works - centered below -->
+      <div class="card fade-in-up" style="margin-top: 1.5rem; width: 100%; max-width: 1000px; flex-direction: column; animation-delay: 0.2s;">
+        <div class="glow"></div>
+        <h3 style="margin-bottom: 1rem;">how tracking works</h3>
+        <div class="lead-box" style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.8;">
+          <p><strong style="color: var(--accent);">1. unique link</strong> - each video gets a tracking url (e.g. /watch/abc123)</p>
+          <p><strong style="color: var(--accent);">2. open detection</strong> - when someone opens your link, we log the timestamp</p>
+          <p><strong style="color: var(--accent);">3. heartbeat tracking</strong> - while playing, we ping the server every 10 seconds with current watch time</p>
+          <p><strong style="color: var(--accent);">4. exit capture</strong> - when they close or navigate away, sendBeacon sends final watch duration</p>
+          <p><strong style="color: var(--accent);">5. analytics</strong> - dashboard shows: who opened, how much they watched, completion %</p>
+        </div>
+      </div>
+    </div><!-- end centered wrapper -->
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- fix-webm-duration for MediaRecorder WebM fix -->
+  <script src="https://cdn.jsdelivr.net/npm/fix-webm-duration@1.0.6/fix-webm-duration.min.js"
+          integrity="sha384-tSRpMhfKv3MS0I88tBk4n9JZKNHc9q9Uagyq6y3VliqIayVrF1Ng9kRNuAiyzNnX"
+          crossorigin="anonymous"></script>
+  <!-- MediaPipe Selfie Segmentation for background replacement -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/selfie_segmentation.js"
+          integrity="sha384-J/3LshwuX+2viPOY3En4QiZvdvlffDhZYH5MsMuLGdwcoGcYSA7EV1jXFsys0gIb"
+          crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js"
+          integrity="sha384-q1KhAZhJcJXr3zfC3Tz07pBqQSabwFIZhXlmlUAB8s0zk4ETWERkIKGBCFQ5Jc3e"
+          crossorigin="anonymous"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/upload.js"></script>
+  <script src="js/record.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+node_modules/
+.env
+*.log
+.DS_Store
+service-account.json
+data/
+
+# Additional security patterns
+*.db
+.env.local
+.env.*.local
+venv/
+__pycache__/
+*.pyc
+functions/**/venv/
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+
+# Test coverage
+coverage/

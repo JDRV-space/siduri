@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/video/studio/">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="page-type" content="protected">
+  <title>settings - siduri</title>
+  <link rel="stylesheet" href="css/siduri.css">
+</head>
+<body>
+  <header class="header">
+    <a href="./" class="logo">siduri</a>
+    <nav class="nav">
+      <a href="./">create</a>
+      <a href="dashboard">dashboard</a>
+      <a href="settings" class="active">settings</a>
+      <a href="#" id="logoutBtn">exit</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- API Token for Chrome Extension -->
+    <div class="card vertical fade-in-up" style="margin-top: 2rem;">
+      <h2>chrome extension</h2>
+      <p class="video-meta" style="margin-bottom: 2rem;">connect the siduri gmail extension</p>
+
+      <div class="modal-lead">
+        <!-- New token display -->
+        <div id="tokenDisplay" style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
+          <label style="display: block; margin-bottom: 0.5rem; color: var(--accent);">new token generated - copy now!</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="apiToken" readonly
+              style="flex: 1; padding: 0.75rem; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: monospace; font-size: 11px;">
+            <button class="btn" onclick="copyToken()">copy</button>
+          </div>
+          <p class="video-meta" style="margin-top: 0.5rem; font-size: 12px;">token expires in 30 days</p>
+        </div>
+
+        <!-- Token list -->
+        <div id="tokenList" style="margin-bottom: 1.5rem;"></div>
+
+        <button class="btn btn-primary" onclick="generateApiToken()">generate new token</button>
+        <!-- Chrome extension link placeholder (not yet published) -->
+      </div>
+    </div>
+
+    <!-- Email Notifications -->
+    <div class="card vertical fade-in-up" style="margin-top: 2rem;">
+      <h2>email notifications</h2>
+      <p class="video-meta" style="margin-bottom: 2rem;">get notified via email when someone watches your video</p>
+
+      <div class="modal-lead">
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">send alerts to</label>
+          <input type="email" id="emailRecipient" placeholder="your@email.com"
+            style="width: 100%; padding: 0.75rem; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">notify when viewer watches</label>
+          <select id="emailThreshold" style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
+            <option value="25">25% or more</option>
+            <option value="50" selected>50% or more</option>
+            <option value="75">75% or more</option>
+            <option value="90">90% or more (completed)</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="emailEnabled" checked style="accent-color: var(--accent);">
+            <span style="color: var(--text-primary);">email notifications enabled</span>
+          </label>
+        </div>
+
+        <div style="display: flex; gap: 1rem;">
+          <button class="btn btn-primary" onclick="saveEmailSettings()">save</button>
+          <button class="btn" onclick="testEmailNotification()">send test</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/settings.js"></script>
+</body>
+</html>
