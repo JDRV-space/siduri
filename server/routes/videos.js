@@ -132,8 +132,12 @@ router.patch('/:id', optionalAuth, async (req, res) => {
 
     // Duration updates are public (called from player.js after video loads)
     if (duration_secs !== undefined) {
+      const dur = Number(duration_secs);
+      if (!Number.isFinite(dur) || dur <= 0 || dur > 86400) {
+        return res.status(400).json({ error: 'duration_secs must be a positive number (max 86400)' });
+      }
       const stmt = db.prepare('UPDATE videos SET duration_secs = ? WHERE id = ?');
-      stmt.run(duration_secs, id);
+      stmt.run(dur, id);
     }
 
     if (duration_secs === undefined && title === undefined) {
