@@ -1,10 +1,6 @@
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=cylinder&color=0:1a1a2e,100:6b2fa0&height=220&section=header&text=SIDURI&fontSize=80&fontColor=e8d5b0&animation=fadeIn&desc=Self-hosted%20video.%20Your%20content.%20Your%20data.&descAlignY=70&descSize=16&fontAlignY=38" width="100%"/>
-
-<p>
-  <img src="https://readme-typing-svg.demolab.com/?font=Inter&size=20&duration=3000&pause=1000&color=BB86FC&center=true&vCenter=true&width=650&lines=Record+%7C+Host+%7C+Share+%7C+Track;Background+blur+%2B+auto+subtitles;Viewer+analytics+you+actually+own;Self-hosted.+Your+server.+Your+rules." alt="Typing SVG" />
-</p>
+<img src="./assets/header.svg" alt="SIDURI" width="100%"/>
 
 <img src="./assets/siduri-demo.svg" alt="Siduri Demo" width="100%"/>
 
@@ -492,6 +488,3 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 Built by [@JDRV-space](https://github.com/JDRV-space)
 
-<div align="center">
-<img src="https://capsule-render.vercel.app/api?type=cylinder&color=0:1a1a2e,100:6b2fa0&height=100&section=footer&animation=fadeIn" width="100%"/>
-</div>

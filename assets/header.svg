@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180">
+  <style>
+    @keyframes bar1 { 0%, 100% { height: 20; y: 70; } 25% { height: 40; y: 50; } 50% { height: 15; y: 75; } 75% { height: 35; y: 55; } }
+    @keyframes bar2 { 0%, 100% { height: 35; y: 55; } 25% { height: 15; y: 75; } 50% { height: 45; y: 45; } 75% { height: 20; y: 70; } }
+    @keyframes bar3 { 0%, 100% { height: 25; y: 65; } 25% { height: 50; y: 40; } 50% { height: 30; y: 60; } 75% { height: 45; y: 45; } }
+    @keyframes bar4 { 0%, 100% { height: 40; y: 50; } 25% { height: 20; y: 70; } 50% { height: 35; y: 55; } 75% { height: 50; y: 40; } }
+    @keyframes bar5 { 0%, 100% { height: 15; y: 75; } 25% { height: 30; y: 60; } 50% { height: 50; y: 40; } 75% { height: 25; y: 65; } }
+    @keyframes bar6 { 0%, 100% { height: 30; y: 60; } 25% { height: 45; y: 45; } 50% { height: 20; y: 70; } 75% { height: 40; y: 50; } }
+    @keyframes bar7 { 0%, 100% { height: 45; y: 45; } 25% { height: 25; y: 65; } 50% { height: 40; y: 50; } 75% { height: 15; y: 75; } }
+    @keyframes recPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+    .wave-bar { fill: #8b5cf6; rx: 2; }
+    .wb1 { animation: bar1 2s ease-in-out infinite; }
+    .wb2 { animation: bar2 2s ease-in-out infinite; }
+    .wb3 { animation: bar3 2s ease-in-out infinite; }
+    .wb4 { animation: bar4 2s ease-in-out infinite; }
+    .wb5 { animation: bar5 2s ease-in-out infinite; }
+    .wb6 { animation: bar6 2s ease-in-out infinite; }
+    .wb7 { animation: bar7 2s ease-in-out infinite; }
+    .rec-dot { animation: recPulse 1.5s ease-in-out infinite; }
+  </style>
+  <rect width="800" height="180" fill="#0d1117"/>
+  <!-- SIDURI title -->
+  <text x="320" y="72" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="52" font-weight="700" fill="#8b5cf6" letter-spacing="8">SIDURI</text>
+  <!-- Audio waveform bars -->
+  <g transform="translate(490, 0)">
+    <rect x="0" width="6" class="wave-bar wb1"/>
+    <rect x="12" width="6" class="wave-bar wb2"/>
+    <rect x="24" width="6" class="wave-bar wb3"/>
+    <rect x="36" width="6" class="wave-bar wb4"/>
+    <rect x="48" width="6" class="wave-bar wb5"/>
+    <rect x="60" width="6" class="wave-bar wb6"/>
+    <rect x="72" width="6" class="wave-bar wb7"/>
+  </g>
+  <!-- REC indicator -->
+  <circle cx="590" cy="65" r="4" fill="#ef4444" class="rec-dot"/>
+  <text x="600" y="69" font-family="'Courier New', monospace" font-size="11" fill="#ef4444" font-weight="700" class="rec-dot">REC</text>
+  <!-- Subtle line -->
+  <line x1="200" y1="92" x2="600" y2="92" stroke="#8b5cf6" stroke-width="0.5" opacity="0.25"/>
+  <!-- Tagline -->
+  <text x="400" y="120" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="14" fill="#8b949e">Record, transcribe, summarize</text>
+  <!-- Sub-tagline -->
+  <text x="400" y="150" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#6b7280">Self-hosted video platform with viewer analytics</text>
+</svg>
