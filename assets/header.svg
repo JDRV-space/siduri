@@ -1,43 +1,96 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180">
-  <style>
-    @keyframes bar1 { 0%, 100% { height: 20; y: 70; } 25% { height: 40; y: 50; } 50% { height: 15; y: 75; } 75% { height: 35; y: 55; } }
-    @keyframes bar2 { 0%, 100% { height: 35; y: 55; } 25% { height: 15; y: 75; } 50% { height: 45; y: 45; } 75% { height: 20; y: 70; } }
-    @keyframes bar3 { 0%, 100% { height: 25; y: 65; } 25% { height: 50; y: 40; } 50% { height: 30; y: 60; } 75% { height: 45; y: 45; } }
-    @keyframes bar4 { 0%, 100% { height: 40; y: 50; } 25% { height: 20; y: 70; } 50% { height: 35; y: 55; } 75% { height: 50; y: 40; } }
-    @keyframes bar5 { 0%, 100% { height: 15; y: 75; } 25% { height: 30; y: 60; } 50% { height: 50; y: 40; } 75% { height: 25; y: 65; } }
-    @keyframes bar6 { 0%, 100% { height: 30; y: 60; } 25% { height: 45; y: 45; } 50% { height: 20; y: 70; } 75% { height: 40; y: 50; } }
-    @keyframes bar7 { 0%, 100% { height: 45; y: 45; } 25% { height: 25; y: 65; } 50% { height: 40; y: 50; } 75% { height: 15; y: 75; } }
-    @keyframes recPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
-    .wave-bar { fill: #8b5cf6; rx: 2; }
-    .wb1 { animation: bar1 2s ease-in-out infinite; }
-    .wb2 { animation: bar2 2s ease-in-out infinite; }
-    .wb3 { animation: bar3 2s ease-in-out infinite; }
-    .wb4 { animation: bar4 2s ease-in-out infinite; }
-    .wb5 { animation: bar5 2s ease-in-out infinite; }
-    .wb6 { animation: bar6 2s ease-in-out infinite; }
-    .wb7 { animation: bar7 2s ease-in-out infinite; }
-    .rec-dot { animation: recPulse 1.5s ease-in-out infinite; }
-  </style>
-  <rect width="800" height="180" fill="#0d1117"/>
-  <!-- SIDURI title -->
-  <text x="320" y="72" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="52" font-weight="700" fill="#8b5cf6" letter-spacing="8">SIDURI</text>
-  <!-- Audio waveform bars -->
-  <g transform="translate(490, 0)">
-    <rect x="0" width="6" class="wave-bar wb1"/>
-    <rect x="12" width="6" class="wave-bar wb2"/>
-    <rect x="24" width="6" class="wave-bar wb3"/>
-    <rect x="36" width="6" class="wave-bar wb4"/>
-    <rect x="48" width="6" class="wave-bar wb5"/>
-    <rect x="60" width="6" class="wave-bar wb6"/>
-    <rect x="72" width="6" class="wave-bar wb7"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180" fill="none">
+  <defs>
+    <!-- Colors extracted from siduri/public/css/siduri.css :root -->
+    <!-- --bg-primary: #070910, --bg-secondary: #05060b -->
+    <!-- --accent: #8b0d1d (deep crimson), --accent-hover: #ffffff -->
+    <!-- --text-primary: #f5f5f5, --text-muted: rgba(245,245,245,0.7) -->
+    <!-- --border: rgba(255,255,255,0.08), --border-hover: rgba(255,255,255,0.4) -->
+    <!-- --error: #ef4444, --success: #22c55e -->
+    <!-- Fonts: Audiowide (logo/nav), Space Grotesk (body) -->
+    <!-- Card style: border-radius 20px, backdrop-filter blur(12px) -->
+    <linearGradient id="siduriBg" x1="0" y1="0" x2="800" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#070910"/>
+      <stop offset="100%" stop-color="#05060b"/>
+    </linearGradient>
+    <style>
+      @keyframes waveBar1 { 0%,100% { height: 22; y: 68; } 25% { height: 42; y: 48; } 50% { height: 16; y: 74; } 75% { height: 36; y: 54; } }
+      @keyframes waveBar2 { 0%,100% { height: 36; y: 54; } 25% { height: 16; y: 74; } 50% { height: 46; y: 44; } 75% { height: 22; y: 68; } }
+      @keyframes waveBar3 { 0%,100% { height: 28; y: 62; } 25% { height: 50; y: 40; } 50% { height: 32; y: 58; } 75% { height: 46; y: 44; } }
+      @keyframes waveBar4 { 0%,100% { height: 42; y: 48; } 25% { height: 22; y: 68; } 50% { height: 38; y: 52; } 75% { height: 50; y: 40; } }
+      @keyframes waveBar5 { 0%,100% { height: 16; y: 74; } 25% { height: 32; y: 58; } 50% { height: 50; y: 40; } 75% { height: 28; y: 62; } }
+      @keyframes waveBar6 { 0%,100% { height: 32; y: 58; } 25% { height: 46; y: 44; } 50% { height: 22; y: 68; } 75% { height: 42; y: 48; } }
+      @keyframes waveBar7 { 0%,100% { height: 46; y: 44; } 25% { height: 28; y: 62; } 50% { height: 42; y: 48; } 75% { height: 16; y: 74; } }
+      @keyframes recPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.15; } }
+      .wb1 { animation: waveBar1 2.2s ease-in-out infinite; }
+      .wb2 { animation: waveBar2 2.2s ease-in-out infinite; }
+      .wb3 { animation: waveBar3 2.2s ease-in-out infinite; }
+      .wb4 { animation: waveBar4 2.2s ease-in-out infinite; }
+      .wb5 { animation: waveBar5 2.2s ease-in-out infinite; }
+      .wb6 { animation: waveBar6 2.2s ease-in-out infinite; }
+      .wb7 { animation: waveBar7 2.2s ease-in-out infinite; }
+      .rec { animation: recPulse 1.5s ease-in-out infinite; }
+    </style>
+  </defs>
+
+  <!-- Background: --bg-primary to --bg-secondary -->
+  <rect width="800" height="180" fill="url(#siduriBg)"/>
+
+  <!-- Logo (.logo style: Audiowide, lowercase, letter-spacing 0.05em, opacity 0.6) -->
+  <text x="60" y="42" font-family="'Audiowide',sans-serif" font-size="14"
+        fill="#f5f5f5" fill-opacity="0.6" letter-spacing="0.05em">siduri</text>
+
+  <!-- Pill navigation mockup (.nav: pill-shaped, backdrop-blur, centered) -->
+  <g transform="translate(260, 20)">
+    <rect x="0" y="0" width="280" height="34" rx="17"
+          fill="#0c0117" fill-opacity="0.4" stroke="white" stroke-opacity="0.1" stroke-width="1"/>
+    <!-- Nav items (Audiowide, lowercase, letter-spacing 0.1em) -->
+    <!-- Active item: border 2px solid white, rounded pill -->
+    <rect x="8" y="4" width="80" height="26" rx="13" fill="none" stroke="white" stroke-opacity="0.9" stroke-width="1.5"/>
+    <text x="48" y="22" font-family="'Audiowide',sans-serif" font-size="10" fill="#f5f5f5"
+          text-anchor="middle" letter-spacing="0.1em">record</text>
+    <!-- Inactive items -->
+    <text x="140" y="22" font-family="'Audiowide',sans-serif" font-size="10" fill="#f5f5f5"
+          fill-opacity="0.7" text-anchor="middle" letter-spacing="0.1em">library</text>
+    <text x="230" y="22" font-family="'Audiowide',sans-serif" font-size="10" fill="#f5f5f5"
+          fill-opacity="0.7" text-anchor="middle" letter-spacing="0.1em">share</text>
   </g>
-  <!-- REC indicator -->
-  <circle cx="590" cy="65" r="4" fill="#ef4444" class="rec-dot"/>
-  <text x="600" y="69" font-family="'Courier New', monospace" font-size="11" fill="#ef4444" font-weight="700" class="rec-dot">REC</text>
-  <!-- Subtle line -->
-  <line x1="200" y1="92" x2="600" y2="92" stroke="#8b5cf6" stroke-width="0.5" opacity="0.25"/>
-  <!-- Tagline -->
-  <text x="400" y="120" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="14" fill="#8b949e">Record, transcribe, summarize</text>
-  <!-- Sub-tagline -->
-  <text x="400" y="150" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#6b7280">Self-hosted video platform with viewer analytics</text>
+
+  <!-- Main title area (h1 style: Space Grotesk, lowercase, font-weight 600) -->
+  <text x="120" y="95" font-family="'Space Grotesk',system-ui,sans-serif" font-size="42" font-weight="600"
+        fill="#f5f5f5" letter-spacing="0.02em" text-transform="lowercase">siduri</text>
+
+  <!-- Audio waveform bars (--accent: #8b0d1d deep crimson) -->
+  <g transform="translate(420, 0)">
+    <rect x="0" width="7" rx="2" fill="#8b0d1d" class="wb1"/>
+    <rect x="14" width="7" rx="2" fill="#8b0d1d" class="wb2"/>
+    <rect x="28" width="7" rx="2" fill="#8b0d1d" class="wb3"/>
+    <rect x="42" width="7" rx="2" fill="#8b0d1d" class="wb4"/>
+    <rect x="56" width="7" rx="2" fill="#8b0d1d" class="wb5"/>
+    <rect x="70" width="7" rx="2" fill="#8b0d1d" class="wb6"/>
+    <rect x="84" width="7" rx="2" fill="#8b0d1d" class="wb7"/>
+  </g>
+
+  <!-- REC indicator (--error: #ef4444, recording pulse) -->
+  <g class="rec" transform="translate(540, 62)">
+    <circle cx="0" cy="0" r="4" fill="#ef4444"/>
+    <text x="10" y="4" font-family="'Space Grotesk',sans-serif" font-size="11" fill="#ef4444" font-weight="600"
+          letter-spacing="0.04em">REC</text>
+  </g>
+
+  <!-- Record button mockup (.record-btn: 64px circle, border 3px solid --accent) -->
+  <g transform="translate(660, 52)">
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#8b0d1d" stroke-width="2.5"/>
+    <circle cx="24" cy="24" r="8" fill="#8b0d1d"/>
+  </g>
+
+  <!-- Tagline (--text-muted, Space Grotesk, lowercase) -->
+  <text x="120" y="124" font-family="'Space Grotesk',system-ui,sans-serif" font-size="13"
+        fill="#f5f5f5" fill-opacity="0.7" letter-spacing="0.02em">record, transcribe, summarize</text>
+
+  <!-- Sub info (smaller, more muted) -->
+  <text x="120" y="148" font-family="'Space Grotesk',system-ui,sans-serif" font-size="10"
+        fill="#f5f5f5" fill-opacity="0.4" letter-spacing="0.04em">self-hosted video platform with viewer analytics</text>
+
+  <!-- Bottom border accent (subtle crimson) -->
+  <rect x="0" y="176" width="800" height="4" fill="#8b0d1d" fill-opacity="0.3"/>
 </svg>
