@@ -1,27 +1,19 @@
 # Changelog
 
-All notable changes to Siduri will be documented in this file.
+This file records user-visible changes. Dates are best effort.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+## 1.0.0 - 2026-01-28
 
-## [1.0.0] - 2026-01-28
-
-### Added
-- Initial open source release
-- **Video Recording** with webcam/microphone in browser
-- **Background Blur** using MediaPipe Selfie Segmentation (light + super blur)
-- **Custom Backgrounds** - gradient, office, dark, or custom image upload
-- **Direct Upload** to Google Cloud Storage with progress indicator
-- **Video Playback** with Video.js player
-- **Automatic Subtitles** via faster-whisper Cloud Function (Spanish)
-- **GIF Thumbnails** auto-generated via Cloud Function
-- **View Tracking** with watch time and completion percentage
-- **Analytics Dashboard** showing all videos and per-viewer stats
-- **Email Notifications** when someone watches your video
-- **Shareable Links** with optional viewer identification
-- **JWT Authentication** with secure httpOnly cookies
-- **Invitation System** - first user becomes owner, others need invite code
-- **Password Reset** via email
-- **Rate Limiting** on auth endpoints (10 attempts per 15 min)
-- **Cloud Run Deployment** guide with GCS FUSE for SQLite persistence
-- **Docker Support** for self-hosting
+- Initial public snapshot.
+- Browser recording with webcam and microphone.
+- MediaPipe background blur and static background replacement.
+- Direct MP4/WebM upload to Google Cloud Storage.
+- Video playback with Video.js.
+- Optional Spanish subtitle generation through a Cloud Function.
+- Optional GIF thumbnail generation through a Cloud Function.
+- View tracking with watch time and completion percentage.
+- Dashboard for videos and viewer stats.
+- Email notifications for watched videos when SMTP is configured.
+- Share links with optional viewer identification.
+- JWT login, invitations, password reset, and rate limiting.
+- Cloud Run and Docker deployment notes.

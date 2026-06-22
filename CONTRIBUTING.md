@@ -1,68 +1,48 @@
-# Contributing to Siduri
+# Contributing
 
-Thanks for your interest in contributing to Siduri!
+This is a small self-hosted app, not a broad platform project. Keep changes narrow and practical.
 
-## Development Setup
+## Local Setup
 
-1. Fork and clone the repository
-2. Copy `.env.example` to `.env` and configure your environment
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
-5. Open http://localhost:8080
-
-## Code Style
-
-- ES6+ JavaScript (no TypeScript)
-- 2-space indentation
-- Single quotes for strings
-- Semicolons required (match existing style)
-- Descriptive variable names
-
-## Project Structure
-
-```
-siduri/
-├── server/          # Express backend
-│   ├── routes/      # API endpoints
-│   ├── lib/         # Utilities (db, gcs, auth)
-│   └── middleware/  # Express middleware
-├── public/          # Frontend (vanilla JS)
-│   ├── js/          # Page scripts
-│   └── css/         # Styles
-└── functions/       # Google Cloud Functions
+```bash
+npm install
+cp .env.example .env
+npm run dev
 ```
 
-## Pull Request Process
+Open `http://localhost:8080`.
 
-1. Create a feature branch from `main`:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-2. Make your changes
-3. Test locally to ensure nothing breaks
-4. Update README.md if you're adding features
-5. Commit with a clear message:
-   ```bash
-   git commit -m "Add feature: description"
-   ```
-6. Push and open a Pull Request
+You need a GCS bucket and Google application-default credentials for real uploads.
 
-## Reporting Issues
+## Change Rules
 
-- Use GitHub Issues for bug reports and feature requests
-- Include steps to reproduce for bugs
-- Check existing issues before creating new ones
+- Do not add framework, build, or database rewrites unless the change needs them.
+- Keep the vanilla frontend and Express backend simple.
+- Preserve the single-instance SQLite assumption unless you are replacing the storage model.
+- Update `README.md` when behavior, deployment, config, or limits change.
+- Keep secrets out of examples, logs, screenshots, and commits.
 
-## Security Issues
+## Style
 
-For security vulnerabilities, please open a private security advisory on GitHub instead of a public issue.
+- JavaScript, no TypeScript.
+- 2-space indentation.
+- Single quotes and semicolons.
+- Descriptive names over clever abstractions.
 
-## Questions?
+## Checks
 
-Open a GitHub Discussion or issue if you have questions about contributing.
+There is no full test suite in this repo. Before sending a change, run the narrowest useful check:
+
+```bash
+npm run dev
+```
+
+Then manually exercise the changed flow. For docs-only changes, at least run:
+
+```bash
+git diff --check
+```
+
+## Security
+
+For a real vulnerability, use GitHub private security reporting if available. Do not put secrets or exploit details in a public issue.
