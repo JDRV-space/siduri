@@ -1,4 +1,4 @@
-// SQLite database — embedded, no external database service needed
+// SQLite database  -  embedded, no external database service needed
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
@@ -62,6 +62,7 @@ try {
   db.exec(`
     CREATE TABLE IF NOT EXISTS notification_settings (
       id TEXT PRIMARY KEY,
+      user_id TEXT,
       channel TEXT NOT NULL,
       webhook_url TEXT NOT NULL,
       notify_threshold INTEGER DEFAULT 50,
@@ -71,6 +72,11 @@ try {
 
     CREATE INDEX IF NOT EXISTS idx_views_viewer ON views(viewer_email);
   `);
+
+  const notificationColumns = db.pragma('table_info(notification_settings)').map(c => c.name);
+  if (!notificationColumns.includes('user_id')) {
+    db.exec('ALTER TABLE notification_settings ADD COLUMN user_id TEXT');
+  }
 } catch (err) {
   console.error('Migration error:', err);
 }
@@ -140,6 +146,21 @@ try {
     );
 
     CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id);
+
+    CREATE TABLE IF NOT EXISTS pending_uploads (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      filename TEXT NOT NULL,
+      object_path TEXT NOT NULL,
+      content_type TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pending_uploads_user ON pending_uploads(user_id);
+    CREATE INDEX IF NOT EXISTS idx_pending_uploads_expires ON pending_uploads(expires_at);
   `);
 
   // Add user_id column to videos if not exists
@@ -156,10 +177,20 @@ try {
     if (firstOwner) {
       console.log(`Migrating ${nullUserVideos.count} videos to owner ${firstOwner.id}`);
       db.prepare('UPDATE videos SET user_id = ? WHERE user_id IS NULL').run(firstOwner.id);
-    } else {
-      console.warn('WARNING: No owner user found. Videos with NULL user_id remain unassigned.');
-    }
+	    } else {
+	      console.warn('WARNING: No owner user found. Videos with NULL user_id remain unassigned.');
+	    }
+	  }
+
+  const firstOwner = db.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").get();
+  if (firstOwner) {
+    db.prepare('UPDATE notification_settings SET user_id = ? WHERE user_id IS NULL').run(firstOwner.id);
   }
+
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_notification_settings_user_channel
+    ON notification_settings(user_id, channel);
+  `);
 } catch (err) {
   console.error('Security migration error:', err);
 }

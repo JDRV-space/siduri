@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../lib/db');
 const { verifyToken } = require('../lib/token');
 const { sendTeamsNotification, sendEmailNotification } = require('../lib/notify');
+const { getEnabledNotificationSettings } = require('../lib/notificationSettings');
 
 // Validate watchSecs - returns null if invalid (reject the request)
 function sanitizeWatchSecs(watchSecs) {
@@ -28,7 +29,11 @@ async function processTrackData({ videoId, watchSecs, viewerToken, sessionId }) 
   }
 
   // Get video info for percentage calculation
-  const video = db.prepare('SELECT title, duration_secs FROM videos WHERE id = ?').get(videoId);
+  const video = db.prepare('SELECT title, duration_secs, user_id FROM videos WHERE id = ?').get(videoId);
+  if (!video) {
+    return;
+  }
+
   const duration = video?.duration_secs || 0;
   const watchPercent = duration > 0 ? (watchSecs / duration) * 100 : 0;
 
@@ -59,12 +64,14 @@ async function processTrackData({ videoId, watchSecs, viewerToken, sessionId }) 
   }
 
   // NOTIFICATION LOGIC
-  // Check all enabled notification channels
-  const allSettings = db.prepare('SELECT * FROM notification_settings WHERE enabled = 1').all();
+  // Only the video owner's enabled settings can receive viewer data.
+  const ownerSettings = video.user_id
+    ? getEnabledNotificationSettings(video.user_id)
+    : [];
 
   // Use lowest threshold from any enabled channel (default 50)
-  const threshold = allSettings.length > 0
-    ? Math.min(...allSettings.map(s => s.notify_threshold || 50))
+  const threshold = ownerSettings.length > 0
+    ? Math.min(...ownerSettings.map(s => s.notify_threshold || 50))
     : 50;
 
   // Trigger if:
@@ -74,7 +81,7 @@ async function processTrackData({ videoId, watchSecs, viewerToken, sessionId }) 
   const crossedThreshold = previousPercent < threshold && watchPercent >= threshold;
   const notAlreadyNotified = !existing?.notified_at;
 
-  if (viewerEmail && crossedThreshold && notAlreadyNotified && allSettings.length > 0) {
+  if (viewerEmail && crossedThreshold && notAlreadyNotified && ownerSettings.length > 0) {
     // Mark as notified immediately to prevent double-sends
     db.prepare(`
       UPDATE views SET notified_at = datetime('now')
@@ -89,12 +96,12 @@ async function processTrackData({ videoId, watchSecs, viewerToken, sessionId }) 
       watchPercent: Math.round(watchPercent)
     };
 
-    // Send to all enabled channels (don't await to avoid blocking)
-    for (const setting of allSettings) {
+    // Send to the video owner's enabled channels (don't await to avoid blocking)
+    for (const setting of ownerSettings) {
       if (setting.channel === 'teams') {
-        sendTeamsNotification(notificationData).catch(err => console.error('Teams notification error:', err));
+        sendTeamsNotification(notificationData, setting).catch(err => console.error('Teams notification error:', err));
       } else if (setting.channel === 'email') {
-        sendEmailNotification(notificationData).catch(err => console.error('Email notification error:', err));
+        sendEmailNotification(notificationData, setting).catch(err => console.error('Email notification error:', err));
       }
     }
   }

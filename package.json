@@ -1,11 +1,13 @@
 {
   "name": "siduri",
   "version": "1.0.0",
-  "description": "Self-hosted video hosting platform with viewer analytics",
+  "description": "Single-tenant self-hosted video recording and sharing tool with viewer analytics",
+  "license": "Apache-2.0",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "nodemon server/index.js"
+    "dev": "nodemon server/index.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.7.0",
@@ -18,8 +20,8 @@
     "express-rate-limit": "^7.5.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^7.0.11",
-    "uuid": "^9.0.1"
+    "nodemailer": "^9.0.3",
+    "uuid": "^11.1.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

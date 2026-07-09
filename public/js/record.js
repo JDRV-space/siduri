@@ -448,7 +448,7 @@ async function uploadRecordedVideo(file) {
       throw new Error(errorData.error || 'failed to get upload url');
     }
 
-    const { uploadUrl, gcsUrl, filename } = await uploadRes.json();
+    const { uploadId, uploadUrl } = await uploadRes.json();
 
     // Step 2: Upload to GCS
     const xhr = new XMLHttpRequest();
@@ -471,8 +471,7 @@ async function uploadRecordedVideo(file) {
     const videoRes = await authenticatedFetch('api/videos', {
       method: 'POST',
       body: JSON.stringify({
-        gcsUrl,
-        filename,
+        uploadId,
         title: videoTitle
       })
     });
@@ -481,11 +480,11 @@ async function uploadRecordedVideo(file) {
       throw new Error('failed to register video');
     }
 
-    const { trackingUrl } = await videoRes.json();
+    const { watchUrl } = await videoRes.json();
 
     // Success!
     if (recordStatus) recordStatus.textContent = '';
-    document.getElementById('trackingUrl').value = trackingUrl;
+    document.getElementById('trackingUrl').value = watchUrl;
     document.getElementById('result').style.display = 'block';
     if (typeof showToast === 'function') showToast('video uploaded successfully', 'success');
 

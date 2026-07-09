@@ -6,9 +6,32 @@ const storage = new Storage({
 
 const bucket = storage.bucket(process.env.GCS_BUCKET);
 
+function getVideoObjectPath(filename) {
+  return `videos/${filename}`;
+}
+
+function getPublicGcsUrl(objectPath) {
+  return `https://storage.googleapis.com/${process.env.GCS_BUCKET}/${objectPath}`;
+}
+
+function getObjectPathFromGcsUrl(gcsUrl) {
+  const expectedPrefix = `https://storage.googleapis.com/${process.env.GCS_BUCKET}/`;
+  if (typeof gcsUrl !== 'string' || !gcsUrl.startsWith(expectedPrefix)) {
+    return null;
+  }
+
+  const objectPath = gcsUrl.slice(expectedPrefix.length);
+  if (!objectPath.startsWith('videos/') || objectPath.includes('..')) {
+    return null;
+  }
+
+  return objectPath;
+}
+
 // Generate signed URL for direct upload (1 hour expiry)
 async function getSignedUploadUrl(filename, contentType) {
-  const file = bucket.file(`videos/${filename}`);
+  const objectPath = getVideoObjectPath(filename);
+  const file = bucket.file(objectPath);
 
   const [url] = await file.getSignedUrl({
     version: 'v4',
@@ -19,7 +42,8 @@ async function getSignedUploadUrl(filename, contentType) {
 
   return {
     uploadUrl: url,
-    gcsUrl: `https://storage.googleapis.com/${process.env.GCS_BUCKET}/videos/${filename}`
+    objectPath,
+    gcsUrl: getPublicGcsUrl(objectPath)
   };
 }
 
@@ -36,4 +60,11 @@ async function getSignedReadUrl(gcsPath) {
   return url;
 }
 
-module.exports = { getSignedUploadUrl, getSignedReadUrl, bucket };
+module.exports = {
+  bucket,
+  getObjectPathFromGcsUrl,
+  getPublicGcsUrl,
+  getSignedReadUrl,
+  getSignedUploadUrl,
+  getVideoObjectPath
+};

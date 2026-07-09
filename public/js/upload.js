@@ -75,7 +75,7 @@ async function handleFile(file) {
       throw new Error('failed to get upload url');
     }
 
-    const { uploadUrl, gcsUrl, filename } = await uploadRes.json();
+    const { uploadId, uploadUrl } = await uploadRes.json();
     uploadStatus.textContent = 'uploading to cloud...';
 
     // Step 2: Upload directly to GCS
@@ -87,8 +87,7 @@ async function handleFile(file) {
     const videoRes = await authenticatedFetch('api/videos', {
       method: 'POST',
       body: JSON.stringify({
-        gcsUrl,
-        filename,
+        uploadId,
         title: file.name.replace(/\.[^/.]+$/, '') // Remove extension
       })
     });
@@ -97,11 +96,11 @@ async function handleFile(file) {
       throw new Error('failed to register video');
     }
 
-    const { trackingUrl } = await videoRes.json();
+    const { watchUrl } = await videoRes.json();
 
     // Success!
     uploadStatus.textContent = '';
-    trackingUrlInput.value = trackingUrl;
+    trackingUrlInput.value = watchUrl;
     result.style.display = 'block';
     showToast('video uploaded successfully', 'success');
 

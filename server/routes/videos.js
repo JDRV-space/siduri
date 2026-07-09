@@ -3,28 +3,87 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { jwtAuth, optionalAuth } = require('../middleware/jwtAuth');
 const db = require('../lib/db');
-const { getSignedReadUrl } = require('../lib/gcs');
+const { getPublicGcsUrl, getSignedReadUrl, getVideoObjectPath } = require('../lib/gcs');
+const { buildWatchUrl } = require('../lib/requestUrl');
+
+const SAFE_VIDEO_FILENAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(mp4|webm)$/i;
+
+function getStoredVideoObjectPath(filename) {
+  if (typeof filename !== 'string' || !SAFE_VIDEO_FILENAME.test(filename)) {
+    return null;
+  }
+
+  return getVideoObjectPath(filename);
+}
+
+function parseDurationSecs(durationSecs) {
+  if (durationSecs === undefined || durationSecs === null || durationSecs === '') {
+    return null;
+  }
+
+  const parsed = Number(durationSecs);
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 86400) {
+    return null;
+  }
+
+  return parsed;
+}
 
 // POST /api/videos - Register uploaded video in database
 router.post('/', jwtAuth, async (req, res) => {
   try {
-    const { gcsUrl, title, filename, durationSecs } = req.body;
+    const { uploadId, title, durationSecs } = req.body;
 
-    if (!gcsUrl || !filename) {
-      return res.status(400).json({ error: 'gcsUrl and filename required' });
+    if (!uploadId) {
+      return res.status(400).json({ error: 'uploadId required' });
     }
 
+    const pendingUpload = db.prepare(`
+      SELECT *
+      FROM pending_uploads
+      WHERE id = ?
+        AND user_id = ?
+        AND consumed_at IS NULL
+        AND expires_at > datetime('now')
+    `).get(uploadId, req.user.id);
+
+    if (!pendingUpload) {
+      return res.status(400).json({ error: 'Invalid or expired uploadId' });
+    }
+
+    const duration = parseDurationSecs(durationSecs);
+    if (durationSecs !== undefined && duration === null) {
+      return res.status(400).json({ error: 'durationSecs must be a positive number (max 86400)' });
+    }
+
+    const gcsUrl = getPublicGcsUrl(pendingUpload.object_path);
     const id = uuidv4();
-    const stmt = db.prepare(`
-      INSERT INTO videos (id, filename, gcs_url, title, duration_secs, user_id)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(id, filename, gcsUrl, title || filename, durationSecs || null, req.user.id);
+    const createVideo = db.transaction(() => {
+      db.prepare(`
+        INSERT INTO videos (id, filename, gcs_url, title, duration_secs, user_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(
+        id,
+        pendingUpload.filename,
+        gcsUrl,
+        title || pendingUpload.filename,
+        duration,
+        req.user.id
+      );
+
+      db.prepare(`
+        UPDATE pending_uploads
+        SET consumed_at = datetime('now')
+        WHERE id = ?
+      `).run(uploadId);
+    });
+
+    createVideo();
 
     res.json({
       id,
-      watchUrl: `/watch/${id}`,
-      trackingUrl: `${req.protocol}://${req.get('host')}/watch/${id}`
+      watchUrl: buildWatchUrl(req, id),
+      trackingUrl: null
     });
 
   } catch (error) {
@@ -49,9 +108,9 @@ router.get('/', jwtAuth, async (req, res) => {
         ? Math.round((totalWatchSecs / totalViews / video.duration_secs) * 100)
         : 0;
 
-      // GIF URL follows naming convention: videos/{id}.gif (handles .mp4 and .webm)
-      const gifUrl = video.gcs_url
-        ? video.gcs_url.replace(/\.(mp4|webm)$/i, '.gif')
+      const objectPath = getStoredVideoObjectPath(video.filename);
+      const gifUrl = objectPath
+        ? getPublicGcsUrl(objectPath.replace(/\.(mp4|webm)$/i, '.gif'))
         : null;
 
       return {
@@ -85,9 +144,13 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Video not found' });
     }
 
-    // Generate signed URL for video playback
-    const gcsPath = video.gcs_url.replace(`https://storage.googleapis.com/${process.env.GCS_BUCKET}/`, '');
-    const signedUrl = await getSignedReadUrl(gcsPath);
+    const objectPath = getStoredVideoObjectPath(video.filename);
+    if (!objectPath) {
+      return res.status(500).json({ error: 'Video storage path invalid' });
+    }
+
+    // Generate signed URL for video playback from the server-owned object path.
+    const signedUrl = await getSignedReadUrl(objectPath);
 
     res.json({
       id: video.id,

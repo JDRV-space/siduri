@@ -1,5 +1,7 @@
-const db = require('./db');
 const nodemailer = require('nodemailer');
+const { validateTeamsWebhookUrl } = require('./teamsWebhook');
+
+const NOTIFICATION_TIMEOUT_MS = 5000;
 
 // Email transporter
 let emailTransporter = null;
@@ -29,12 +31,27 @@ function getEmailTransporter() {
   return emailTransporter;
 }
 
-async function sendEmailNotification({ viewerEmail, viewerName, videoId, videoTitle, watchPercent }) {
-  // Get email settings
-  const settings = db.prepare(
-    'SELECT * FROM notification_settings WHERE channel = ? AND enabled = 1'
-  ).get('email');
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
 
+async function fetchWithTimeout(url, options) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), NOTIFICATION_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function sendEmailNotification({ viewerEmail, viewerName, videoId, videoTitle, watchPercent }, settings) {
   if (!settings?.webhook_url) { // webhook_url stores recipient email for email channel
     return { success: false, error: 'Email notifications not configured' };
   }
@@ -45,26 +62,30 @@ async function sendEmailNotification({ viewerEmail, viewerName, videoId, videoTi
   }
 
   const viewerDisplay = viewerName || viewerEmail;
+  const safeViewerDisplay = escapeHtml(viewerDisplay);
+  const safeViewerEmail = escapeHtml(viewerEmail);
+  const safeVideoTitle = escapeHtml(videoTitle);
   const baseUrl = process.env.BASE_URL || 'http://localhost:8080';
   const watchUrl = `${baseUrl}/watch/${videoId}`;
+  const safeWatchUrl = escapeHtml(watchUrl);
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
       <h2 style="color: #8b0d1d; margin-bottom: 20px;">Video Alert</h2>
       <p style="font-size: 16px; color: #333;">
-        <strong>${viewerDisplay}</strong> just watched <strong>${watchPercent}%</strong> of "${videoTitle}"
+        <strong>${safeViewerDisplay}</strong> just watched <strong>${watchPercent}%</strong> of "${safeVideoTitle}"
       </p>
       <table style="margin: 20px 0; border-collapse: collapse;">
         <tr>
           <td style="padding: 8px 16px 8px 0; color: #666;">Email:</td>
-          <td style="padding: 8px 0;"><strong>${viewerEmail}</strong></td>
+          <td style="padding: 8px 0;"><strong>${safeViewerEmail}</strong></td>
         </tr>
         <tr>
           <td style="padding: 8px 16px 8px 0; color: #666;">Completion:</td>
           <td style="padding: 8px 0;"><strong>${watchPercent}%</strong></td>
         </tr>
       </table>
-      <a href="${watchUrl}" style="display: inline-block; background: #8b0d1d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">View Video</a>
+      <a href="${safeWatchUrl}" style="display: inline-block; background: #8b0d1d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">View Video</a>
       <p style="margin-top: 30px; font-size: 12px; color: #999;">Sent by siduri</p>
     </div>
   `;
@@ -84,15 +105,15 @@ async function sendEmailNotification({ viewerEmail, viewerName, videoId, videoTi
   }
 }
 
-async function sendTeamsNotification({ viewerEmail, viewerName, videoId, videoTitle, watchPercent }) {
-  // Get Teams webhook from settings
-  const settings = db.prepare(
-    'SELECT * FROM notification_settings WHERE channel = ? AND enabled = 1'
-  ).get('teams');
-
+async function sendTeamsNotification({ viewerEmail, viewerName, videoId, videoTitle, watchPercent }, settings) {
   if (!settings?.webhook_url) {
     // Silent return if not configured
     return;
+  }
+
+  const validation = validateTeamsWebhookUrl(settings.webhook_url);
+  if (!validation.valid) {
+    return { success: false, error: validation.error };
   }
 
   const viewerDisplay = viewerName || viewerEmail;
@@ -149,7 +170,7 @@ async function sendTeamsNotification({ viewerEmail, viewerName, videoId, videoTi
   };
 
   try {
-    const response = await fetch(settings.webhook_url, {
+    const response = await fetchWithTimeout(validation.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(message)
@@ -168,19 +189,8 @@ async function sendTeamsNotification({ viewerEmail, viewerName, videoId, videoTi
 }
 
 async function sendSlackNotification({ viewerEmail, viewerName, videoId, videoTitle, watchPercent }) {
-  // Check for SLACK_WEBHOOK_URL env var first
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
-
-  // If no env var, check database settings
-  let finalWebhookUrl = webhookUrl;
-  if (!finalWebhookUrl) {
-    const settings = db.prepare(
-      'SELECT * FROM notification_settings WHERE channel = ? AND enabled = 1'
-    ).get('slack');
-    finalWebhookUrl = settings?.webhook_url;
-  }
-
-  if (!finalWebhookUrl) {
+  if (!webhookUrl) {
     // Silent return if not configured
     return;
   }
@@ -237,7 +247,7 @@ async function sendSlackNotification({ viewerEmail, viewerName, videoId, videoTi
   };
 
   try {
-    const response = await fetch(finalWebhookUrl, {
+    const response = await fetchWithTimeout(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(message)

@@ -12,17 +12,32 @@ const ALLOWED_TYPES = ['video/mp4', 'video/webm'];
 
 // Upload limits per user (prevents GIF generation DoS)
 const MAX_UPLOADS_PER_HOUR = 10;
+const UPLOAD_URL_TTL_MS = 60 * 60 * 1000;
 
 // Helper to check if content type is allowed (handles codec strings like "video/webm;codecs=vp9,opus")
 function isAllowedType(contentType) {
-  if (!contentType) return false;
-  const baseType = contentType.split(';')[0].trim().toLowerCase();
+  const baseType = getBaseContentType(contentType);
   return ALLOWED_TYPES.includes(baseType);
+}
+
+function getBaseContentType(contentType) {
+  if (!contentType) return '';
+  return contentType.split(';')[0].trim().toLowerCase();
+}
+
+function getExtensionForContentType(contentType) {
+  const baseType = getBaseContentType(contentType);
+  if (baseType === 'video/webm') return 'webm';
+  return 'mp4';
+}
+
+function toSqliteDateTime(date) {
+  return date.toISOString().replace('T', ' ').slice(0, 19);
 }
 
 // Check user upload count in last hour
 function getUserUploadCount(userId) {
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const oneHourAgo = toSqliteDateTime(new Date(Date.now() - 60 * 60 * 1000));
   const result = db.prepare(`
     SELECT COUNT(*) as count FROM videos
     WHERE user_id = ? AND created_at > ?
@@ -56,25 +71,38 @@ router.post('/', jwtAuth, async (req, res) => {
     }
 
     // Validate file size (required)
-    if (!size) {
+    const parsedSize = Number(size);
+    if (!Number.isInteger(parsedSize) || parsedSize <= 0) {
       return res.status(400).json({ error: 'size required' });
     }
-    if (size > MAX_SIZE) {
+    if (parsedSize > MAX_SIZE) {
       return res.status(413).json({
         error: 'File too large. Max 100MB'
       });
     }
 
-    // Generate unique filename (handle files without extension)
-    const ext = filename.includes('.') ? filename.split('.').pop() : 'mp4';
+    // Use the verified content type for extension selection, not user input.
+    const ext = getExtensionForContentType(contentType);
     const uniqueFilename = `${uuidv4()}.${ext}`;
 
     // Get signed URL for upload
-    const { uploadUrl, gcsUrl } = await getSignedUploadUrl(uniqueFilename, contentType);
+    const { uploadUrl, objectPath } = await getSignedUploadUrl(uniqueFilename, contentType);
+    const uploadId = uuidv4();
+    const expiresAt = toSqliteDateTime(new Date(Date.now() + UPLOAD_URL_TTL_MS));
+
+    db.prepare(`
+      DELETE FROM pending_uploads
+      WHERE expires_at < datetime('now')
+    `).run();
+
+    db.prepare(`
+      INSERT INTO pending_uploads (id, user_id, filename, object_path, content_type, size, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(uploadId, req.user.id, uniqueFilename, objectPath, contentType, parsedSize, expiresAt);
 
     res.json({
+      uploadId,
       uploadUrl,
-      gcsUrl,
       filename: uniqueFilename,
       expiresIn: 3600 // 1 hour
     });

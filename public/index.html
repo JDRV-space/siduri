@@ -127,6 +127,7 @@
         <h3 style="margin-bottom: 1rem;">video ready</h3>
         <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
           <input type="text" id="trackingUrl" readonly
+            aria-label="watch link"
             style="flex: 1; padding: 0.75rem 1rem; background: var(--bg-secondary);
             border: 1px solid var(--border); border-radius: 999px; color: var(--text-primary);
             font-family: 'Space Grotesk', sans-serif; min-width: 200px; max-width: 500px;">
@@ -142,11 +143,11 @@
         <div class="glow"></div>
         <h3 style="margin-bottom: 1rem;">how tracking works</h3>
         <div class="lead-box" style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.8;">
-          <p><strong style="color: var(--accent);">1. unique link</strong> - each video gets a tracking url (e.g. /watch/abc123)</p>
-          <p><strong style="color: var(--accent);">2. open detection</strong> - when someone opens your link, we log the timestamp</p>
+          <p><strong style="color: var(--accent);">1. watch link</strong> - uploads create a plain watch link for previewing the video</p>
+          <p><strong style="color: var(--accent);">2. share link</strong> - dashboard sharing creates a recipient-specific tracking link</p>
           <p><strong style="color: var(--accent);">3. heartbeat tracking</strong> - while playing, we ping the server every 10 seconds with current watch time</p>
           <p><strong style="color: var(--accent);">4. exit capture</strong> - when they close or navigate away, sendBeacon sends final watch duration</p>
-          <p><strong style="color: var(--accent);">5. analytics</strong> - dashboard shows: who opened, how much they watched, completion %</p>
+          <p><strong style="color: var(--accent);">5. analytics</strong> - dashboard shows who watched, how much they watched, and completion %</p>
         </div>
       </div>
     </div><!-- end centered wrapper -->

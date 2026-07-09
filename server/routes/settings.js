@@ -1,20 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const { jwtAuth } = require('../middleware/jwtAuth');
-const db = require('../lib/db');
-const { v4: uuidv4 } = require('uuid');
+const { requireAdminOrOwner } = require('../middleware/requireRole');
+const {
+  getNotificationSettings,
+  isValidEmailAddress,
+  parseThreshold,
+  upsertNotificationSetting
+} = require('../lib/notificationSettings');
 const { sendTeamsNotification, sendEmailNotification } = require('../lib/notify');
+const { validateTeamsWebhookUrl } = require('../lib/teamsWebhook');
 
 // Get all notification settings
-router.get('/notifications', jwtAuth, (req, res) => {
+router.get('/notifications', jwtAuth, requireAdminOrOwner, (req, res) => {
   try {
-    const teams = db.prepare('SELECT * FROM notification_settings WHERE channel = ?').get('teams');
-    const email = db.prepare('SELECT * FROM notification_settings WHERE channel = ?').get('email');
-
-    res.json({
-      teams: teams || { enabled: 0, notify_threshold: 50, webhook_url: '' },
-      email: email || { enabled: 0, notify_threshold: 50, webhook_url: '' }
-    });
+    res.json(getNotificationSettings(req.user.id));
   } catch (err) {
     console.error('Settings error:', err);
     res.status(500).json({ error: 'Failed to load settings' });
@@ -22,19 +22,27 @@ router.get('/notifications', jwtAuth, (req, res) => {
 });
 
 // Save Teams notification settings
-router.post('/notifications/teams', jwtAuth, (req, res) => {
+router.post('/notifications/teams', jwtAuth, requireAdminOrOwner, (req, res) => {
   const { webhookUrl, threshold = 50, enabled = true } = req.body;
+  const parsedThreshold = parseThreshold(threshold);
 
-  if (!webhookUrl) {
-    return res.status(400).json({ error: 'webhookUrl required' });
+  if (parsedThreshold === null) {
+    return res.status(400).json({ error: 'threshold must be an integer from 1 to 100' });
+  }
+
+  const validation = validateTeamsWebhookUrl(webhookUrl);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
   }
 
   try {
-    db.prepare('DELETE FROM notification_settings WHERE channel = ?').run('teams');
-    db.prepare(`
-      INSERT INTO notification_settings (id, channel, webhook_url, notify_threshold, enabled)
-      VALUES (?, 'teams', ?, ?, ?)
-    `).run(uuidv4(), webhookUrl, threshold, enabled ? 1 : 0);
+    upsertNotificationSetting({
+      userId: req.user.id,
+      channel: 'teams',
+      destination: validation.url,
+      threshold: parsedThreshold,
+      enabled
+    });
 
     res.json({ success: true });
   } catch (err) {
@@ -44,19 +52,26 @@ router.post('/notifications/teams', jwtAuth, (req, res) => {
 });
 
 // Save Email notification settings
-router.post('/notifications/email', jwtAuth, (req, res) => {
+router.post('/notifications/email', jwtAuth, requireAdminOrOwner, (req, res) => {
   const { recipientEmail, threshold = 50, enabled = true } = req.body;
+  const parsedThreshold = parseThreshold(threshold);
 
-  if (!recipientEmail) {
-    return res.status(400).json({ error: 'recipientEmail required' });
+  if (parsedThreshold === null) {
+    return res.status(400).json({ error: 'threshold must be an integer from 1 to 100' });
+  }
+
+  if (!isValidEmailAddress(recipientEmail)) {
+    return res.status(400).json({ error: 'valid recipientEmail required' });
   }
 
   try {
-    db.prepare('DELETE FROM notification_settings WHERE channel = ?').run('email');
-    db.prepare(`
-      INSERT INTO notification_settings (id, channel, webhook_url, notify_threshold, enabled)
-      VALUES (?, 'email', ?, ?, ?)
-    `).run(uuidv4(), recipientEmail, threshold, enabled ? 1 : 0);
+    upsertNotificationSetting({
+      userId: req.user.id,
+      channel: 'email',
+      destination: recipientEmail.trim(),
+      threshold: parsedThreshold,
+      enabled
+    });
 
     res.json({ success: true });
   } catch (err) {
@@ -66,11 +81,11 @@ router.post('/notifications/email', jwtAuth, (req, res) => {
 });
 
 // Test Teams notification
-router.post('/notifications/teams/test', jwtAuth, async (req, res) => {
+router.post('/notifications/teams/test', jwtAuth, requireAdminOrOwner, async (req, res) => {
   try {
-    const settings = db.prepare('SELECT * FROM notification_settings WHERE channel = ? AND enabled = 1').get('teams');
+    const settings = getNotificationSettings(req.user.id).teams;
 
-    if (!settings?.webhook_url) {
+    if (!settings?.webhook_url || settings.enabled !== 1) {
       return res.status(400).json({ error: 'Teams webhook not configured' });
     }
 
@@ -80,7 +95,7 @@ router.post('/notifications/teams/test', jwtAuth, async (req, res) => {
       videoId: 'test-video-id',
       videoTitle: 'Test Video',
       watchPercent: 75
-    });
+    }, settings);
 
     if (result?.success) {
       res.json({ success: true, message: 'Test notification sent to Teams' });
@@ -94,11 +109,11 @@ router.post('/notifications/teams/test', jwtAuth, async (req, res) => {
 });
 
 // Test Email notification
-router.post('/notifications/email/test', jwtAuth, async (req, res) => {
+router.post('/notifications/email/test', jwtAuth, requireAdminOrOwner, async (req, res) => {
   try {
-    const settings = db.prepare('SELECT * FROM notification_settings WHERE channel = ? AND enabled = 1').get('email');
+    const settings = getNotificationSettings(req.user.id).email;
 
-    if (!settings?.webhook_url) {
+    if (!settings?.webhook_url || settings.enabled !== 1) {
       return res.status(400).json({ error: 'Email notifications not configured' });
     }
 
@@ -108,7 +123,7 @@ router.post('/notifications/email/test', jwtAuth, async (req, res) => {
       videoId: 'test-video-id',
       videoTitle: 'Test Video',
       watchPercent: 75
-    });
+    }, settings);
 
     if (result?.success) {
       res.json({ success: true, message: `Test email sent to ${settings.webhook_url}` });

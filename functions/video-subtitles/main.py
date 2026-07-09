@@ -22,6 +22,9 @@ MODEL_SIZE = "small"  # Options: tiny, base, small, medium, large (small=~1.5GB)
 DEVICE = "cpu"
 COMPUTE_TYPE = "int8"  # CPU optimization
 LANGUAGE = "es"  # Spanish
+MAX_VIDEO_BYTES = int(os.environ.get("MAX_SUBTITLE_VIDEO_BYTES", 100 * 1024 * 1024))
+ALLOWED_EXTENSIONS = {".mp4", ".webm"}
+ALLOWED_CONTENT_TYPES = {"video/mp4", "video/webm"}
 
 # Global model instance (reused across invocations)
 model = None
@@ -68,6 +71,46 @@ def generate_vtt(segments):
     return vtt
 
 
+def get_content_type_base(content_type):
+    """Return normalized MIME type without parameters."""
+    if not content_type:
+        return ""
+    return content_type.split(";", 1)[0].strip().lower()
+
+
+def parse_object_size(size):
+    """Parse GCS object size from event metadata."""
+    try:
+        parsed_size = int(size)
+    except (TypeError, ValueError):
+        return None
+
+    return parsed_size if parsed_size >= 0 else None
+
+
+def should_process_video(file_name, content_type=None, size=None):
+    """Return whether a GCS object is safe and eligible for transcription."""
+    if not file_name.startswith("videos/"):
+        return False, f"Skipping non-video file: {file_name}"
+
+    extension = os.path.splitext(file_name)[1].lower()
+    if extension == ".vtt":
+        return False, f"Skipping subtitle file: {file_name}"
+
+    if extension not in ALLOWED_EXTENSIONS:
+        return False, f"Skipping unsupported video extension: {file_name}"
+
+    content_type_base = get_content_type_base(content_type)
+    if content_type_base and content_type_base not in ALLOWED_CONTENT_TYPES:
+        return False, f"Skipping unsupported video content type: {content_type}"
+
+    parsed_size = parse_object_size(size)
+    if parsed_size is not None and parsed_size > MAX_VIDEO_BYTES:
+        return False, f"Skipping oversized video: {parsed_size} bytes"
+
+    return True, None
+
+
 @functions_framework.cloud_event
 def generate_subtitles(cloud_event):
     """
@@ -78,15 +121,12 @@ def generate_subtitles(cloud_event):
 
     bucket_name = data["bucket"]
     file_name = data["name"]
+    content_type = data.get("contentType")
+    object_size = data.get("size")
 
-    # Only process video files in the videos/ folder
-    if not file_name.startswith("videos/"):
-        logger.info(f"Skipping non-video file: {file_name}")
-        return
-
-    # Skip if it's already a subtitle file
-    if file_name.endswith(".vtt"):
-        logger.info(f"Skipping subtitle file: {file_name}")
+    should_process, skip_reason = should_process_video(file_name, content_type, object_size)
+    if not should_process:
+        logger.info(skip_reason)
         return
 
     logger.info(f"Processing video: gs://{bucket_name}/{file_name}")
@@ -94,6 +134,16 @@ def generate_subtitles(cloud_event):
     try:
         bucket = storage_client.bucket(bucket_name)
         blob = bucket.blob(file_name)
+
+        if object_size is None or content_type is None:
+            blob.reload()
+            object_size = blob.size
+            content_type = blob.content_type
+
+        should_process, skip_reason = should_process_video(file_name, content_type, object_size)
+        if not should_process:
+            logger.info(skip_reason)
+            return
 
         # Create temp files for video and subtitle
         with tempfile.NamedTemporaryFile(suffix=os.path.splitext(file_name)[1], delete=False) as video_file:

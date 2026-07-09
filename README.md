@@ -1,8 +1,8 @@
 # Siduri
 
-Siduri is a small self-hosted video tool. It records or uploads videos in the browser, stores the files in Google Cloud Storage, and keeps metadata, users, share links, and view tracking in SQLite.
+Siduri is a small self-hosted video tool for a single installation. It records or uploads videos in the browser, stores the files in Google Cloud Storage, and keeps metadata, users, share links, and view tracking in SQLite.
 
-It is not a video platform. It is not built for multi-tenant SaaS, private object storage, high traffic, transcoding, or editing.
+The current scope excludes multi-tenant SaaS, private object storage, high traffic, transcoding, and editing.
 
 ## What It Does
 
@@ -207,4 +207,6 @@ The app mounts the API at `/api`. It also mounts `/video/studio/api` for the exi
 
 ## License
 
-MIT. See `LICENSE`.
+Apache License 2.0. See [LICENSE](LICENSE).
+
+Attribution notices are listed in [NOTICE](NOTICE).
