@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="office" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1f2e"/>
+      <stop offset="50%" style="stop-color:#2d3548"/>
+      <stop offset="100%" style="stop-color:#1a1f2e"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#office)"/>
+  <!-- Subtle grid pattern for office feel -->
+  <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+    <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#3d4559" stroke-width="0.5" opacity="0.3"/>
+  </pattern>
+  <rect width="100%" height="100%" fill="url(#grid)"/>
+</svg>
