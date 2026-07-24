@@ -1,5 +1,5 @@
 # SIDURI - Cloud Run Dockerfile
-FROM node:20-alpine
+FROM node:26-alpine
 
 # Install build tools only while native modules compile
 RUN apk add --no-cache libstdc++ \
