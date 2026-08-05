@@ -1,5 +1,5 @@
 # SIDURI application container
-FROM node:24-alpine
+FROM node:25-alpine
 
 # Install build tools only while native modules compile
 RUN apk add --no-cache libstdc++ \
