@@ -5,7 +5,7 @@ This is a small self-hosted app, not a broad platform project. Keep changes narr
 ## Local Setup
 
 ```bash
-npm install
+npm ci
 cp .env.example .env
 npm run dev
 ```
@@ -31,13 +31,20 @@ You need a GCS bucket and Google application-default credentials for real upload
 
 ## Checks
 
-There is no full test suite in this repo. Before sending a change, run the narrowest useful check:
+Before sending a change, run the checks that cover its owners. The full repository checks are:
 
 ```bash
-npm run dev
+npm ci
+npm run security:audit
+npm test
+python3 -m unittest discover -s functions/gif-generator -p test_main.py
+python3 -m unittest discover -s functions/video-subtitles -p test_main.py
+pip-audit --no-deps --disable-pip -r functions/gif-generator/requirements.txt
+pip-audit --no-deps --disable-pip -r functions/video-subtitles/requirements.txt
+docker build -t siduri:ci .
 ```
 
-Then manually exercise the changed flow. For docs-only changes, at least run:
+Then manually exercise any changed user workflow. For docs-only changes, at least run:
 
 ```bash
 git diff --check
@@ -45,4 +52,4 @@ git diff --check
 
 ## Security
 
-For a real vulnerability, use GitHub private security reporting if available. Do not put secrets or exploit details in a public issue.
+Follow [SECURITY.md](SECURITY.md). Do not put secrets or exploit details in a public issue.

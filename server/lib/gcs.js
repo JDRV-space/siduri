@@ -19,7 +19,8 @@ function getBucket() {
             'siduri-upload-id': process.env.SIDURI_FAKE_GCS_UPLOAD_ID || '',
             'siduri-user-id': process.env.SIDURI_FAKE_GCS_USER_ID || ''
           }
-        }]
+        }],
+        delete: async () => undefined
       })
     };
   }
@@ -106,12 +107,35 @@ async function getObjectMetadata(gcsPath) {
   };
 }
 
+async function deleteVideoObjects(objectPath) {
+  if (
+    typeof objectPath !== 'string'
+    || !/^videos\/[0-9a-f-]+\.(mp4|webm)$/i.test(objectPath)
+    || objectPath.includes('..')
+  ) {
+    throw new Error('Invalid video object path');
+  }
+
+  const objectPaths = [
+    objectPath,
+    objectPath.replace(/\.(mp4|webm)$/i, '.gif'),
+    objectPath.replace(/\.(mp4|webm)$/i, '.vtt')
+  ];
+
+  for (const pathToDelete of objectPaths) {
+    await getBucket().file(pathToDelete).delete({ ignoreNotFound: true });
+  }
+
+  return objectPaths;
+}
+
 module.exports = {
   get bucket() {
     return getBucket();
   },
   getObjectPathFromGcsUrl,
   getObjectMetadata,
+  deleteVideoObjects,
   getPublicGcsUrl,
   getSignedReadUrl,
   getSignedUploadUrl,

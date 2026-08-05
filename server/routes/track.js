@@ -2,9 +2,9 @@ const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db = require('../lib/db');
-const { verifyToken } = require('../lib/token');
 const { sendTeamsNotification, sendEmailNotification } = require('../lib/notify');
 const { getEnabledNotificationSettings } = require('../lib/notificationSettings');
+const { resolveShareToken } = require('../lib/shares');
 
 // Validate watchSecs - returns null if invalid (reject the request)
 function sanitizeWatchSecs(watchSecs) {
@@ -15,18 +15,9 @@ function sanitizeWatchSecs(watchSecs) {
 }
 
 // Shared logic for processing track data
-async function processTrackData({ videoId, watchSecs, viewerToken, sessionId }) {
-  let viewerEmail = null;
-  let viewerName = null;
-
-  // Decode viewer token if present
-  if (viewerToken) {
-    const payload = verifyToken(viewerToken);
-    if (payload && payload.v === videoId) { // Ensure token matches video
-      viewerEmail = payload.e;
-      viewerName = payload.n;
-    }
-  }
+async function processTrackData({ videoId, watchSecs, share, sessionId }) {
+  const viewerEmail = share.recipient_email;
+  const viewerName = share.recipient_name;
 
   // Get video info for percentage calculation
   const video = db.prepare('SELECT title, duration_secs, user_id FROM videos WHERE id = ?').get(videoId);
@@ -129,9 +120,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'invalid watchSecs (must be 0-86400)' });
     }
 
-    // Verify token is valid before tracking
-    const payload = verifyToken(viewerToken);
-    if (!payload || payload.v !== videoId) {
+    const share = resolveShareToken(viewerToken, videoId);
+    if (!share) {
       return res.json({ success: true, tracked: false, reason: 'invalid_token' });
     }
 
@@ -147,7 +137,7 @@ router.post('/', async (req, res) => {
       });
     }
 
-    await processTrackData({ videoId, watchSecs: validWatchSecs, viewerToken, sessionId });
+    await processTrackData({ videoId, watchSecs: validWatchSecs, share, sessionId });
 
     res.json({ success: true, tracked: true, sessionId });
 
@@ -183,9 +173,8 @@ router.post('/beacon', express.text({ type: '*/*' }), async (req, res) => {
       return res.status(204).end();
     }
 
-    // Verify token is valid before tracking
-    const payload = verifyToken(viewerToken);
-    if (!payload || payload.v !== videoId) {
+    const share = resolveShareToken(viewerToken, videoId);
+    if (!share) {
       return res.status(204).end();
     }
 
@@ -194,7 +183,7 @@ router.post('/beacon', express.text({ type: '*/*' }), async (req, res) => {
       sessionId = 'token-' + Date.now();
     }
 
-    await processTrackData({ videoId, watchSecs: validWatchSecs, viewerToken, sessionId });
+    await processTrackData({ videoId, watchSecs: validWatchSecs, share, sessionId });
 
     res.status(204).end();
 

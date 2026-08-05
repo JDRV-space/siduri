@@ -15,13 +15,24 @@
         <img src="img/icon_01.svg" alt="siduri">
       </div>
       <div class="modal-copy">
-        <h2>siduri</h2>
-        <div class="modal-lead">
+        <h2 id="authHeading">siduri</h2>
+        <div class="modal-lead" id="loginFields">
           <input type="email" id="emailInput" placeholder="email" autocomplete="email">
           <input type="password" id="passwordInput" placeholder="password" autocomplete="current-password">
           <button class="btn btn-primary" id="loginBtn">enter</button>
           <p id="loginError" style="color: var(--error); margin-top: 0.5rem; display: none;"></p>
           <a href="forgot-password.html" style="display: block; margin-top: 1rem; color: var(--text-secondary); font-size: 0.875rem; text-decoration: none;">forgot password?</a>
+          <a href="#" id="showRegistrationBtn" style="display: block; margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.875rem; text-decoration: none;">have an invitation?</a>
+        </div>
+        <div class="modal-lead" id="registrationFields" style="display: none;">
+          <p class="auth-note" id="registrationNote"></p>
+          <input type="text" id="registrationNameInput" placeholder="name (optional)" autocomplete="name">
+          <input type="email" id="registrationEmailInput" placeholder="email" autocomplete="email">
+          <input type="password" id="registrationPasswordInput" placeholder="password (12+ characters)" autocomplete="new-password">
+          <input type="password" id="registrationCodeInput" placeholder="invitation code" autocomplete="off">
+          <button class="btn btn-primary" id="registrationBtn">create account</button>
+          <p id="registrationError" style="color: var(--error); margin-top: 0.5rem; display: none;"></p>
+          <a href="#" id="showLoginBtn" style="display: block; margin-top: 0.75rem; color: var(--text-secondary); font-size: 0.875rem; text-decoration: none;">back to sign in</a>
         </div>
       </div>
     </div>

@@ -10,7 +10,7 @@ if (!JWT_SECRET || JWT_SECRET.length < 32) {
 
 // Middleware to verify JWT token from httpOnly cookie OR Authorization header
 function jwtAuth(req, res, next) {
-  // Check cookie first, then Authorization header (for Chrome extension)
+  // Check the browser cookie first, then a bearer token for integrations.
   let token = req.cookies.auth_token;
 
   if (!token) {

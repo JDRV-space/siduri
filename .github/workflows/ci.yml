@@ -10,23 +10,40 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  node:
+    name: Node ${{ matrix.node-version }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
           cache: npm
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
-        with:
-          python-version: "3.11"
       - run: npm ci
       - run: npm run security:audit
       - run: npm test
+
+  python:
+    name: Python 3.11
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
       - run: python3 -m unittest discover -s functions/gif-generator -p test_main.py
       - run: python3 -m unittest discover -s functions/video-subtitles -p test_main.py
       - run: python3 -m pip install pip-audit==2.10.1
       - run: pip-audit --no-deps --disable-pip -r functions/gif-generator/requirements.txt
       - run: pip-audit --no-deps --disable-pip -r functions/video-subtitles/requirements.txt
+
+  container:
+    name: Container build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: docker build -t siduri:ci .

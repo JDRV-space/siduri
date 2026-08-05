@@ -1,19 +1,24 @@
 # Changelog
 
-This file records user-visible changes. Dates are best effort.
+This file records user-visible source changes. Git tags and GitHub releases, when created, own published release state.
 
-## 1.0.0 - 2026-01-28
+## Unreleased
 
-- Initial public snapshot.
-- Browser recording with webcam and microphone.
-- MediaPipe background blur and static background replacement.
-- Direct MP4/WebM upload to Google Cloud Storage.
-- Video playback with Video.js.
-- Optional Spanish subtitle generation through a Cloud Function.
-- Optional GIF thumbnail generation through a Cloud Function.
-- View tracking with watch time and completion percentage.
-- Dashboard for videos and viewer stats.
-- Email notifications for watched videos when SMTP is configured.
-- Share links with optional viewer identification.
-- JWT login, invitations, password reset, and rate limiting.
-- Cloud Run and Docker deployment notes.
+### Changed
+
+- Added first-owner setup and invitation registration to the browser login flow.
+- Made root and `/video/studio` page mounts consistent.
+- Replaced recipient PII in share URLs with opaque server-side share records.
+- Invalidated recipient links created before the server-side share-record change.
+- Added configurable viewer-analytics retention and point-of-collection disclosure.
+- Made video deletion remove GCS video, GIF, and subtitle objects before database state.
+- Aligned Node support and CI with Node.js 22 and 24 LTS.
+- Replaced the unsafe Cloud Storage FUSE SQLite deployment recipe.
+- Corrected SMTP, GCS IAM, subtitle configuration, and contributor guidance.
+
+### Initial public source snapshot
+
+- Browser recording and direct MP4/WebM uploads to private Google Cloud Storage.
+- Video.js playback, optional GIF thumbnails, and optional subtitles.
+- Recipient-specific view analytics and owner notifications.
+- JWT login, invitations, password reset, rate limiting, and integration tokens.

@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const db = require('./lib/db');
+const { purgeExpiredViewerData } = require('./lib/shares');
 
 const app = express();
 const PORT = parseInt(process.env.PORT) || 8080;
@@ -76,11 +77,10 @@ app.use(cookieParser());
 
 // Static files
 app.use(express.static(path.join(__dirname, '../public')));
-// Alias for base href (production uses /video/studio/ via load balancer)
+// Alias for the supported /video/studio browser mount.
 app.use('/video/studio', express.static(path.join(__dirname, '../public')));
 
-// Mount API at both paths for local testing
-// (Production uses load balancer path rewriting from /video/studio/* to /*)
+// Mount the API at the root and at the supported browser prefix.
 const apiPaths = ['/api', '/video/studio/api'];
 
 // Routes
@@ -92,8 +92,7 @@ const shareRoutes = require('./routes/share');
 const settingsRoutes = require('./routes/settings');
 const authRoutes = require('./routes/auth');
 
-// Apply rate limiters and mount routes at both paths
-// (supports both /api/* and /video/studio/api/* for local testing)
+// Apply rate limiters and mount routes at both paths.
 apiPaths.forEach(basePath => {
   app.use(`${basePath}/auth/login`, authLimiter);
   app.use(`${basePath}/auth/register`, authLimiter);
@@ -108,22 +107,25 @@ apiPaths.forEach(basePath => {
 });
 app.use('/health', healthRoutes);
 
-// Serve pages
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
-});
+// Serve pages at the root and at the supported /video/studio prefix.
+// API and page routes deliberately share the same two mount points.
+for (const pagePrefix of ['', '/video/studio']) {
+  app.get(`${pagePrefix}/`, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/index.html'));
+  });
 
-app.get('/watch/:id', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/watch.html'));
-});
+  app.get(`${pagePrefix}/watch/:id`, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/watch.html'));
+  });
 
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/dashboard.html'));
-});
+  app.get(`${pagePrefix}/dashboard`, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/dashboard.html'));
+  });
 
-app.get('/settings', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/settings.html'));
-});
+  app.get(`${pagePrefix}/settings`, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/settings.html'));
+  });
+}
 
 // Error handler
 app.use((err, req, res, next) => {
@@ -137,23 +139,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Cleanup expired revoked tokens (runs hourly)
-function cleanupRevokedTokens() {
+// Cleanup expired security and viewer data (runs hourly).
+function cleanupExpiredData() {
   try {
-    const result = db.prepare(`
+    const revokedTokens = db.prepare(`
       DELETE FROM revoked_tokens WHERE expires_at < datetime('now')
     `).run();
-    if (result.changes > 0) {
-      console.log(`Cleaned up ${result.changes} expired revoked tokens`);
+    const viewerData = purgeExpiredViewerData();
+    const totalChanges = revokedTokens.changes + viewerData.views + viewerData.shares;
+    if (totalChanges > 0) {
+      console.log(`Cleaned up ${totalChanges} expired security and viewer records`);
     }
   } catch (error) {
-    console.error('Token cleanup error:', error);
+    console.error('Expired data cleanup error:', error);
   }
 }
 
 function startServer() {
-  cleanupRevokedTokens();
-  setInterval(cleanupRevokedTokens, 60 * 60 * 1000); // 1 hour
+  cleanupExpiredData();
+  setInterval(cleanupExpiredData, 60 * 60 * 1000); // 1 hour
 
   return app.listen(PORT, () => {
     console.log(`siduri running on port ${PORT}`);

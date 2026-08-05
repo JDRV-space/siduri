@@ -31,6 +31,32 @@ function validateEnv() {
     console.error('❌ BASE_URL is required in production to prevent poisoned absolute links');
     process.exit(1);
   }
+
+  if (process.env.VIEW_DATA_RETENTION_DAYS) {
+    const retentionValue = process.env.VIEW_DATA_RETENTION_DAYS.trim();
+    const retentionDays = Number.parseInt(retentionValue, 10);
+    if (!/^\d+$/.test(retentionValue) || retentionDays < 1 || retentionDays > 3650) {
+      console.error('❌ VIEW_DATA_RETENTION_DAYS must be an integer from 1 to 3650');
+      process.exit(1);
+    }
+  }
+
+  const smtpKeys = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'];
+  const smtpConfigured = smtpKeys.some(key => Boolean(process.env[key]));
+  const missingSmtp = smtpKeys.filter(key => !process.env[key]);
+  if (smtpConfigured && missingSmtp.length > 0) {
+    console.error(`❌ Partial SMTP configuration; missing ${missingSmtp.join(', ')}`);
+    process.exit(1);
+  }
+
+  if (process.env.SMTP_PORT) {
+    const smtpPortValue = process.env.SMTP_PORT.trim();
+    const smtpPort = Number.parseInt(smtpPortValue, 10);
+    if (!/^\d+$/.test(smtpPortValue) || smtpPort < 1 || smtpPort > 65535) {
+      console.error('❌ SMTP_PORT must be an integer from 1 to 65535');
+      process.exit(1);
+    }
+  }
 }
 
 module.exports = { validateEnv };

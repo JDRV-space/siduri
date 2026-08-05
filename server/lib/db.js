@@ -12,10 +12,10 @@ if (!fs.existsSync(dataDir)) {
 const dbPath = path.join(dataDir, 'siduri.db');
 const db = new Database(dbPath);
 
-// Use DELETE mode for GCS FUSE compatibility (no file locking support)
-// WAL mode is faster but requires file locking which Cloud Storage FUSE doesn't support
+// Use a rollback journal for the supported single-process SQLite model.
+// These pragmas do not make non-POSIX or network object storage safe for SQLite.
 db.pragma('journal_mode = DELETE');
-// Sync after each write for durability on mounted storage
+// Ask SQLite to synchronize each transaction on the durable local filesystem.
 db.pragma('synchronous = FULL');
 // Enable foreign key constraints for referential integrity
 db.pragma('foreign_keys = ON');
@@ -43,6 +43,20 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_views_video ON views(video_id);
+  CREATE INDEX IF NOT EXISTS idx_views_updated ON views(updated_at);
+
+  CREATE TABLE IF NOT EXISTS shares (
+    id TEXT PRIMARY KEY,
+    video_id TEXT NOT NULL,
+    recipient_email TEXT NOT NULL,
+    recipient_name TEXT,
+    expires_at TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_shares_video ON shares(video_id);
+  CREATE INDEX IF NOT EXISTS idx_shares_expires ON shares(expires_at);
 `);
 
 // Notification System Migrations
@@ -141,7 +155,7 @@ try {
     CREATE TABLE IF NOT EXISTS api_tokens (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id),
-      name TEXT DEFAULT 'Chrome Extension',
+      name TEXT DEFAULT 'API client',
       created_at TEXT DEFAULT (datetime('now')),
       last_used_at TEXT,
       revoked_at TEXT

@@ -320,11 +320,11 @@ router.post('/refresh', jwtAuth, (req, res) => {
   }
 });
 
-// POST /api/auth/api-token - Generate long-lived API token for Chrome extension
+// POST /api/auth/api-token - Generate a long-lived integration token
 router.post('/api-token', jwtAuth, (req, res) => {
   try {
     const { user } = req;
-    const { name = 'Chrome Extension' } = req.body;
+    const { name = 'API client' } = req.body;
 
     // Generate token ID for tracking/revocation
     const tokenId = uuidv4();
