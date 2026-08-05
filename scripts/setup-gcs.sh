@@ -20,6 +20,10 @@ if [[ ! "$ALLOWED_ORIGIN" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$ ]]; then
   exit 1
 fi
 
+# Service-account creation and signed URLs require both IAM APIs.
+gcloud services enable iam.googleapis.com iamcredentials.googleapis.com \
+  --project="$PROJECT_ID"
+
 cors_file="$(mktemp "${TMPDIR:-/tmp}/siduri-cors.XXXXXX.json")"
 readonly cors_file
 trap 'rm -f "$cors_file"' EXIT
