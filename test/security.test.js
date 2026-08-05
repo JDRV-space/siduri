@@ -15,7 +15,6 @@ process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'siduri-security-')
 
 const { app } = require('../server/index');
 const db = require('../server/lib/db');
-const { generateToken } = require('../server/lib/token');
 
 let server;
 let baseUrl;
@@ -57,6 +56,32 @@ test.after(() => {
 });
 
 test('security acceptance flows', async (t) => {
+  await t.test('clean install exposes owner setup and both supported page mounts', async () => {
+    const setupResponse = await request('/api/auth/check-first-user');
+    assert.equal(setupResponse.status, 200);
+    assert.deepEqual(await json(setupResponse), {
+      isFirstUser: true,
+      requiresInviteCode: true,
+      ownerSetupConfigured: true
+    });
+
+    const rootPage = await request('/');
+    assert.equal(rootPage.status, 200);
+    const rootHtml = await rootPage.text();
+    assert.match(rootHtml, /id="registrationFields"/);
+    assert.match(rootHtml, /id="showRegistrationBtn"/);
+
+    for (const pathname of [
+      '/video/studio/',
+      '/video/studio/dashboard',
+      '/video/studio/settings',
+      '/video/studio/watch/123e4567-e89b-42d3-a456-426614174000'
+    ]) {
+      const response = await request(pathname);
+      assert.equal(response.status, 200, pathname);
+    }
+  });
+
   await t.test('concurrent first-user setup creates exactly one owner', async () => {
     const registrations = await Promise.all([
       request('/api/auth/register', {
@@ -213,16 +238,37 @@ test('security acceptance flows', async (t) => {
     });
     assert.equal(unauthorizedDuration.status, 401);
 
-    const viewerToken = generateToken({
-      e: 'viewer@example.com',
-      v: videoId,
-      x: Date.now() + 60_000
+    const shareResponse = await request(`/api/videos/${videoId}/share`, {
+      method: 'POST',
+      headers: { Cookie: ownerCookie },
+      body: {
+        recipientEmail: 'viewer@example.com',
+        recipientName: 'Test Viewer'
+      }
     });
+    assert.equal(shareResponse.status, 200);
+    const share = await json(shareResponse);
+    const viewerToken = new URL(share.trackingUrl).searchParams.get('v');
+    const tokenPayload = JSON.parse(Buffer.from(viewerToken.split('.')[0], 'base64url').toString());
+    assert.equal(tokenPayload.e, undefined);
+    assert.equal(tokenPayload.n, undefined);
+    assert.equal(typeof tokenPayload.s, 'string');
+
     const sharedVideo = await request(`/api/videos/${videoId}?v=${encodeURIComponent(viewerToken)}`);
     assert.equal(sharedVideo.status, 200);
     const sharedBody = await json(sharedVideo);
     assert.match(sharedBody.videoUrl, /\?signed=read/);
     assert.match(sharedBody.subtitleUrl, /\.vtt\?signed=read/);
+    assert.deepEqual(sharedBody.tracking, { enabled: true, retentionDays: 90 });
+
+    const trackResponse = await request('/api/track', {
+      method: 'POST',
+      body: { videoId, watchSecs: 5, viewerToken }
+    });
+    assert.equal(trackResponse.status, 200);
+    assert.equal((await json(trackResponse)).tracked, true);
+    const view = db.prepare('SELECT viewer_email, viewer_name FROM views WHERE video_id = ?').get(videoId);
+    assert.deepEqual(view, { viewer_email: 'viewer@example.com', viewer_name: 'Test Viewer' });
 
     const ownerDuration = await request(`/api/videos/${videoId}`, {
       method: 'PATCH',
@@ -233,6 +279,15 @@ test('security acceptance flows', async (t) => {
 
     const updated = db.prepare('SELECT duration_secs FROM videos WHERE id = ?').get(videoId);
     assert.equal(updated.duration_secs, 42);
+
+    const deleteResponse = await request(`/api/videos/${videoId}`, {
+      method: 'DELETE',
+      headers: { Cookie: ownerCookie }
+    });
+    assert.equal(deleteResponse.status, 200);
+    assert.equal(db.prepare('SELECT id FROM videos WHERE id = ?').get(videoId), undefined);
+    assert.equal(db.prepare('SELECT id FROM views WHERE video_id = ?').get(videoId), undefined);
+    assert.equal(db.prepare('SELECT id FROM shares WHERE video_id = ?').get(videoId), undefined);
   });
 
   await t.test('signed upload registration verifies object size and metadata before consuming', async () => {
@@ -263,8 +318,8 @@ test('security acceptance flows', async (t) => {
       }))
     );
     const reservationStatuses = concurrentReservations.map(response => response.status);
-    assert.equal(reservationStatuses.filter(status => status === 200).length, 8);
-    assert.equal(reservationStatuses.filter(status => status === 429).length, 4);
+    assert.equal(reservationStatuses.filter(status => status === 200).length, 9);
+    assert.equal(reservationStatuses.filter(status => status === 429).length, 3);
 
     const owner = db.prepare('SELECT id FROM users WHERE email = ?').get(ownerEmail);
     process.env.SIDURI_FAKE_GCS_OBJECT_SIZE = '99';

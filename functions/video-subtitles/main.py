@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 storage_client = storage.Client()
 
 # Model settings
-MODEL_SIZE = "small"  # Options: tiny, base, small, medium, large (small=~1.5GB)
-DEVICE = "cpu"
-COMPUTE_TYPE = "int8"  # CPU optimization
-LANGUAGE = "es"  # Spanish
+MODEL_SIZE = os.environ.get("MODEL_SIZE", "small")
+DEVICE = os.environ.get("DEVICE", "cpu")
+COMPUTE_TYPE = os.environ.get("COMPUTE_TYPE", "int8")
+LANGUAGE = os.environ.get("LANGUAGE", "es")
 MAX_VIDEO_BYTES = int(os.environ.get("MAX_SUBTITLE_VIDEO_BYTES", 100 * 1024 * 1024))
 ALLOWED_EXTENSIONS = {".mp4", ".webm"}
 ALLOWED_CONTENT_TYPES = {"video/mp4", "video/webm"}
@@ -36,8 +36,6 @@ def get_model():
     global model
     if model is None:
         logger.info(f"Loading faster-whisper model: {MODEL_SIZE}")
-        # HF_TOKEN env var is auto-detected by huggingface_hub for model download
-        # Do NOT pass token to WhisperModel - it incorrectly forwards to ctranslate2
         model = WhisperModel(
             MODEL_SIZE,
             device=DEVICE,

@@ -20,10 +20,10 @@
   </header>
 
   <main class="container">
-    <!-- API Token for Chrome Extension -->
+    <!-- Integration API tokens -->
     <div class="card vertical fade-in-up" style="margin-top: 2rem;">
-      <h2>chrome extension</h2>
-      <p class="video-meta" style="margin-bottom: 2rem;">connect the siduri gmail extension</p>
+      <h2>integration tokens</h2>
+      <p class="video-meta" style="margin-bottom: 2rem;">create a bearer token for a trusted API client. The HTTP API is not yet a stable public contract.</p>
 
       <div class="modal-lead">
         <!-- New token display -->
@@ -41,12 +41,11 @@
         <div id="tokenList" style="margin-bottom: 1.5rem;"></div>
 
         <button class="btn btn-primary" onclick="generateApiToken()">generate new token</button>
-        <!-- Add the Chrome extension install link when a package URL exists. -->
       </div>
     </div>
 
     <!-- Email Notifications -->
-    <div class="card vertical fade-in-up" style="margin-top: 2rem;">
+    <div class="card vertical fade-in-up" data-admin-only style="margin-top: 2rem;">
       <h2>email notifications</h2>
       <p class="video-meta" style="margin-bottom: 2rem;">get notified via email when someone watches your video</p>
 

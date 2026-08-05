@@ -3,9 +3,9 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const { jwtAuth, optionalAuth } = require('../middleware/jwtAuth');
 const db = require('../lib/db');
-const { getObjectMetadata, getPublicGcsUrl, getSignedReadUrl, getVideoObjectPath } = require('../lib/gcs');
+const { deleteVideoObjects, getObjectMetadata, getPublicGcsUrl, getSignedReadUrl, getVideoObjectPath } = require('../lib/gcs');
 const { buildWatchUrl } = require('../lib/requestUrl');
-const { verifyToken } = require('../lib/token');
+const { getViewerDataRetentionDays, resolveShareToken } = require('../lib/shares');
 
 const SAFE_VIDEO_FILENAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(mp4|webm)$/i;
 
@@ -39,17 +39,12 @@ function getDerivedObjectPath(objectPath, extension) {
   return objectPath.replace(/\.(mp4|webm)$/i, extension);
 }
 
-function isViewerTokenForVideo(token, videoId) {
-  const payload = verifyToken(token);
-  return Boolean(payload && payload.v === videoId);
-}
-
-function canReadVideo(req, video) {
+function canReadVideo(req, video, share) {
   if (req.user && video.user_id === req.user.id) {
     return true;
   }
 
-  return isViewerTokenForVideo(req.query?.v, video.id);
+  return Boolean(share);
 }
 
 async function verifyUploadedObjectMatchesPending(pendingUpload) {
@@ -220,7 +215,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
       return res.status(404).json({ error: 'Video not found' });
     }
 
-    if (!canReadVideo(req, video)) {
+    const share = resolveShareToken(req.query?.v, video.id);
+    if (!canReadVideo(req, video, share)) {
       return res.status(403).json({ error: 'Valid share token or owner session required' });
     }
 
@@ -240,7 +236,10 @@ router.get('/:id', optionalAuth, async (req, res) => {
       durationSecs: video.duration_secs,
       created_at: video.created_at,
       videoUrl: signedUrl,
-      subtitleUrl
+      subtitleUrl,
+      tracking: share
+        ? { enabled: true, retentionDays: getViewerDataRetentionDays() }
+        : { enabled: false }
     });
 
   } catch (error) {
@@ -294,7 +293,7 @@ router.delete('/:id', jwtAuth, async (req, res) => {
     const { id } = req.params;
 
     // Verify ownership
-    const video = db.prepare('SELECT user_id FROM videos WHERE id = ?').get(id);
+    const video = db.prepare('SELECT user_id, filename FROM videos WHERE id = ?').get(id);
     if (!video) {
       return res.status(404).json({ error: 'Video not found' });
     }
@@ -303,14 +302,21 @@ router.delete('/:id', jwtAuth, async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized - not video owner' });
     }
 
-    const stmt = db.prepare('DELETE FROM videos WHERE id = ?');
-    stmt.run(id);
+    const objectPath = getStoredVideoObjectPath(video.filename);
+    if (!objectPath) {
+      return res.status(500).json({ error: 'Video storage path invalid' });
+    }
+
+    // Delete storage first. Missing objects are ignored, so retries are safe.
+    // Keep the database row if storage cleanup fails so the owner can retry.
+    await deleteVideoObjects(objectPath);
+    db.prepare('DELETE FROM videos WHERE id = ?').run(id);
 
     res.json({ success: true });
 
   } catch (error) {
     console.error('Delete video error:', error);
-    res.status(500).json({ error: 'Failed to delete video' });
+    res.status(502).json({ error: 'Failed to delete video objects; no database record was removed' });
   }
 });
 

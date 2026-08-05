@@ -1,5 +1,5 @@
-const nodemailer = require('nodemailer');
 const { validateTeamsWebhookUrl } = require('./teamsWebhook');
+const { createSmtpTransporter } = require('./smtp');
 
 const NOTIFICATION_TIMEOUT_MS = 5000;
 
@@ -9,24 +9,7 @@ let emailTransporter = null;
 function getEmailTransporter() {
   if (emailTransporter) return emailTransporter;
 
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpPort = process.env.SMTP_PORT || 587;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    return null;
-  }
-
-  emailTransporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: false, // STARTTLS
-    auth: {
-      user: smtpUser,
-      pass: smtpPass
-    }
-  });
+  emailTransporter = createSmtpTransporter();
 
   return emailTransporter;
 }

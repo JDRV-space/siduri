@@ -179,7 +179,7 @@ async function generateApiToken() {
   try {
     const res = await authenticatedFetch(BASE_PATH + 'api/auth/api-token', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Chrome Extension' })
+      body: JSON.stringify({ name: 'API client' })
     });
 
     const data = await res.json();
@@ -240,8 +240,19 @@ function copyToken() {
   });
 }
 
-// Init
-document.addEventListener('DOMContentLoaded', () => {
-  loadSettings();
+function initializeSettings(user) {
+  const canManageNotifications = user?.role === 'owner' || user?.role === 'admin';
+  document.querySelectorAll('[data-admin-only]').forEach(element => {
+    element.style.display = canManageNotifications ? '' : 'none';
+  });
+
+  if (canManageNotifications) {
+    loadSettings();
+  }
   loadApiTokens();
-});
+}
+
+document.addEventListener('siduri:authenticated', event => initializeSettings(event.detail));
+if (window.currentUser) {
+  initializeSettings(window.currentUser);
+}

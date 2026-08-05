@@ -41,13 +41,18 @@ if __name__ == "__main__":
         print(f"Error: File not found: {video_path}")
         sys.exit(1)
 
-    print(f"Loading faster-whisper model (medium)...")
-    model = WhisperModel("medium", device="cpu", compute_type="int8")
+    model_size = os.environ.get("MODEL_SIZE", "small")
+    print(f"Loading faster-whisper model ({model_size})...")
+    model = WhisperModel(
+        model_size,
+        device=os.environ.get("DEVICE", "cpu"),
+        compute_type=os.environ.get("COMPUTE_TYPE", "int8"),
+    )
 
     print(f"Transcribing: {video_path}")
     segments, info = model.transcribe(
         video_path,
-        language="es",
+        language=os.environ.get("LANGUAGE", "es"),
         beam_size=5,
         vad_filter=True,
         vad_parameters=dict(min_silence_duration_ms=500)

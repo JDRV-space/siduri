@@ -1,51 +1,50 @@
 # Siduri
 
-Siduri is a small self-hosted video tool for a single installation. It records or uploads videos in the browser, stores the files in Google Cloud Storage, and keeps metadata, users, share links, and view tracking in SQLite.
+Siduri is a small self-hosted video recording and sharing tool for one installation. It stores video objects in Google Cloud Storage and keeps users, metadata, recipient shares, and viewer analytics in SQLite.
 
-The current scope excludes multi-tenant SaaS, high traffic, transcoding, and editing.
+This repository is an initial public source snapshot. It does not yet have a tagged GitHub release or a stable public HTTP API.
 
 ## What It Does
 
-- Records webcam and microphone video in the browser.
-- Supports MediaPipe background blur or static replacement backgrounds.
-- Uploads MP4 or WebM files directly to GCS through signed URLs.
-- Plays videos with Video.js from server-issued signed GCS URLs.
-- Tracks watch time and completion for tokenized share links.
-- Generates share links for a recipient email, with an optional viewer name.
-- Sends password reset and view notification emails if SMTP is configured.
-- Can run optional Cloud Functions for GIF thumbnails and Spanish subtitles.
+- Records webcam and microphone video in the browser or uploads MP4/WebM files.
+- Supports MediaPipe background blur and static replacement backgrounds.
+- Uploads directly to a private GCS bucket with server-issued signed URLs.
+- Creates plain preview links and recipient-specific analytics links.
+- Tracks watch progress for valid recipient links and can notify the owner through SMTP or Microsoft Teams.
+- Can run optional Cloud Functions for GIF thumbnails and subtitles.
+- Deletes the stored video, GIF, subtitle, recipient shares, and analytics when an owner deletes a video.
 
-## Stack
+## Supported Runtime
 
-- Node.js 20-25
-- Express
-- Vanilla JavaScript frontend, no build step
-- SQLite via `better-sqlite3`
-- Google Cloud Storage for video files
-- Optional Google Cloud Functions for subtitles and GIF thumbnails
+- Node.js 22 or 24 LTS
+- Python 3.11 for optional Cloud Functions
+- A private Google Cloud Storage bucket
+- A durable local POSIX filesystem for SQLite
+
+The frontend is vanilla JavaScript and has no build step. The server uses Express and `better-sqlite3`.
 
 ## Hard Limits
 
-- Single-tenant by design. The first registered user becomes owner only with `SIDURI_OWNER_SETUP_CODE`. Extra users need invitations, but this is still one shared installation.
-- SQLite is embedded. Run at most one app instance writing to the database.
-- Cloud Run with SQLite needs `--max-instances 1`. Multiple instances can corrupt or split state.
-- GCS FUSE persistence works as a cheap option, not as a real database volume. It has locking and latency caveats.
-- Keep video, subtitle, and GIF objects private. The app returns signed read URLs only to the owner session or a valid tokenized share link. A share URL can still be forwarded by its recipient.
-- No transcoding, clipping, trimming, adaptive streaming, or format repair. Upload browser-playable MP4 or WebM.
-- App upload limit is 100 MB per video and 10 uploads per user per hour.
-- The GIF function has its own guards: 100 MB max input by default, 10 minutes max duration, 60 second ffmpeg timeout.
-- Subtitle generation is optional, Spanish-focused, slow, and can time out on long or noisy videos.
-- MediaPipe blur depends on browser support, WebGL, and CDN resources allowed by the CSP.
-- This is not for high-traffic public SaaS.
+- Siduri is single-tenant. The first account requires `SIDURI_OWNER_SETUP_CODE`; later accounts require invitations.
+- Run exactly one application process against a SQLite database. Do not place `siduri.db` on Cloud Storage FUSE or another filesystem without reliable POSIX locking and synchronization.
+- Cloud Run container storage is ephemeral. Siduri does not currently have a supported durable Cloud Run deployment because GCS FUSE is not a safe SQLite volume.
+- This is not designed for high-traffic public SaaS, multi-tenant isolation, transcoding, editing, or adaptive streaming.
+- Uploads are limited to browser-playable MP4/WebM files, 100 MB per video, and 10 upload reservations per user per hour.
+- Recipient-specific links expire after 30 days. They record session ID, watch progress, and the recipient email/name supplied by the sender. Analytics are retained for 90 days by default.
+- Recipient links can be forwarded. Tokens contain opaque record IDs rather than recipient PII, but anyone holding a valid link can view the associated video until the share expires or the video is deleted.
+- Recipient links created before opaque server-side share records were introduced are intentionally invalid and must be recreated.
+- The viewer loads Video.js, Google Fonts, the signed GCS media URL, and Siduri's own tracking endpoint. Plain preview links do not create viewer analytics.
 
 ## Install
 
+Install the Google Cloud CLI, Node.js 22 or 24, and npm. Then:
+
 ```bash
-npm install
+npm ci
 cp .env.example .env
 ```
 
-Set at least these values in `.env`:
+Set at least:
 
 ```bash
 JWT_SECRET=use-a-random-string-at-least-32-characters-long
@@ -54,23 +53,18 @@ GCS_PROJECT_ID=your-gcp-project-id
 SIDURI_OWNER_SETUP_CODE=use-a-random-first-owner-setup-code
 ```
 
-For local development, authenticate the Google client library:
+Authenticate the Google client library and start the application:
 
 ```bash
 gcloud auth application-default login
-```
-
-Then run it:
-
-```bash
 npm run dev
 ```
 
-Open `http://localhost:8080`. Register the first account with `SIDURI_OWNER_SETUP_CODE`; that account becomes the owner.
+Open `http://localhost:8080`. A clean database displays the owner-creation form. Enter the value configured in `SIDURI_OWNER_SETUP_CODE`; the created account becomes the installation owner.
 
 ## GCS Setup
 
-Create a bucket and allow browser uploads. The included script creates a uniform-access bucket and CORS rules for the signed upload headers:
+The idempotent setup script creates or reuses a uniform-access bucket, applies upload CORS, creates a dedicated service account, grants bucket-scoped Object User access, and grants that identity permission to sign URLs:
 
 ```bash
 ./scripts/setup-gcs.sh \
@@ -79,144 +73,86 @@ Create a bucket and allow browser uploads. The included script creates a uniform
   YOUR_PROJECT_ID
 ```
 
-Equivalent CORS configuration:
-
-```json
-[
-  {
-    "origin": ["https://video.yourdomain.com"],
-    "method": ["GET", "HEAD", "PUT"],
-    "responseHeader": [
-      "Content-Type",
-      "Content-Length",
-      "Accept-Encoding",
-      "x-goog-content-length-range",
-      "x-goog-meta-siduri-upload-id",
-      "x-goog-meta-siduri-user-id"
-    ],
-    "maxAgeSeconds": 3600
-  }
-]
-```
-
-Do not grant `allUsers:objectViewer` on the bucket. Playback, subtitles, and GIF thumbnails use signed read URLs.
+The script prints the service-account flag required by a Google-hosted runtime. Do not grant public object access or project-wide Storage Object Admin.
 
 ## Configuration
 
-| Variable | Required | Default | Notes |
+`.env.example` owns the complete configuration reference. The main settings are:
+
+| Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `JWT_SECRET` | Yes | none | Use a random 32+ character value. |
-| `GCS_BUCKET` | Yes | none | Bucket used for `videos/` objects. |
+| `JWT_SECRET` | Yes | none | Signs authentication and share tokens; minimum 32 characters. |
+| `GCS_BUCKET` | Yes | none | Private bucket containing `videos/` objects. |
 | `GCS_PROJECT_ID` | Yes | none | Google Cloud project ID. |
-| `PORT` | No | `8080` | Cloud Run expects `8080`. |
-| `NODE_ENV` | No | `development` | Use `production` behind HTTPS. |
-| `DATA_DIR` | No | `./data` | Directory for `siduri.db`. |
-| `BASE_URL` | Production | local URL | Public URL used in reset and share links. Include path prefixes. |
-| `SIDURI_OWNER_SETUP_CODE` | First owner setup | none | Required to create the initial owner account. |
-| `TRUST_PROXY` | No | `1` in production, `false` otherwise | Express trust proxy setting. |
-| `ALLOWED_EMAIL_DOMAINS` | No | all domains | Comma-separated registration allowlist. |
-| `ALLOWED_ORIGINS` | No | localhost origins | Comma-separated CORS allowlist. |
-| `SMTP_HOST` | No | none | Enables password reset and email notifications with the other SMTP values. |
-| `SMTP_PORT` | No | `587` | SMTP port. |
-| `SMTP_USER` | No | none | SMTP username. |
-| `SMTP_PASS` | No | none | SMTP password. |
-| `SMTP_FROM` | No | `SMTP_USER` | Sender address. |
+| `SIDURI_OWNER_SETUP_CODE` | First owner | none | Authorizes creation of the first account. |
+| `BASE_URL` | Production | local URL | Public root or `/video/studio` URL used in reset and share links. |
+| `DATA_DIR` | No | `./data` | Durable POSIX directory containing `siduri.db`. |
+| `VIEW_DATA_RETENTION_DAYS` | No | `90` | Analytics retention, from 1 to 3650 days. |
+| `ALLOWED_ORIGINS` | No | localhost | Comma-separated browser origins allowed by CORS. |
+| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` | No | none | All three enable password-reset and email notifications. |
+| `SMTP_PORT` | No | `587` | Port 465 uses implicit TLS; other ports use STARTTLS behavior. |
 
-## Deploy
+## Deployment
 
-### Cloud Run
+### Docker with durable SQLite
 
-Basic deployment:
-
-```bash
-gcloud run deploy siduri \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --max-instances 1 \
-  --memory 512Mi \
-  --set-env-vars "JWT_SECRET=YOUR_SECRET,GCS_BUCKET=YOUR_BUCKET,GCS_PROJECT_ID=YOUR_PROJECT,NODE_ENV=production,BASE_URL=https://YOUR_DOMAIN/video/studio,SIDURI_OWNER_SETUP_CODE=YOUR_OWNER_SETUP_CODE"
-```
-
-By default, SQLite lives in the container filesystem. Treat that as disposable. Redeploys, restarts, and instance replacement can lose the database.
-
-If you accept the caveats, mount a separate GCS bucket for the SQLite data directory:
-
-```bash
-gsutil mb -l us-central1 gs://YOUR_BUCKET_NAME-data
-
-gcloud run services update siduri \
-  --region us-central1 \
-  --add-volume name=data-vol,type=cloud-storage,bucket=YOUR_BUCKET_NAME-data \
-  --add-volume-mount volume=data-vol,mount-path=/app/data \
-  --max-instances 1 \
-  --set-env-vars "DATA_DIR=/app/data"
-```
-
-Do not remove `--max-instances 1` while using SQLite.
-
-### Docker
+Create a named volume so the image's non-root `node` user owns the initialized data directory:
 
 ```bash
 docker build -t siduri .
+docker volume create siduri-data
 
-docker run -p 8080:8080 \
-  -e JWT_SECRET=your-secret-key-32-chars-minimum \
-  -e GCS_BUCKET=your-bucket \
-  -e GCS_PROJECT_ID=your-project \
-  -e NODE_ENV=production \
-  -e BASE_URL=https://video.yourdomain.com \
-  -e SIDURI_OWNER_SETUP_CODE=your-owner-setup-code \
-  -v $(pwd)/data:/app/data \
+docker run --name siduri -p 8080:8080 \
+  --env-file .env \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/var/run/secrets/google/application_default_credentials.json \
+  -v /absolute/path/to/application_default_credentials.json:/var/run/secrets/google/application_default_credentials.json:ro \
+  -v siduri-data:/app/data \
   siduri
 ```
 
+Set `NODE_ENV=production` and the externally reachable `BASE_URL` in `.env`. Back up both the SQLite volume and GCS bucket according to the installation's recovery requirements.
+
+### Cloud Run
+
+Cloud Run may be used only for disposable evaluation while Siduri uses SQLite. Restarts, replacements, and deployments can lose the database, and `--max-instances 1` does not make Cloud Storage FUSE a safe SQLite volume.
+
+A supported durable Cloud Run deployment requires a different storage architecture, such as a tested client/server database or a suitable POSIX volume. No production Cloud Run recipe is provided until that contract exists.
+
 ## Optional Functions
 
-These are separate Cloud Functions triggered by GCS object finalization. The main app works without them. They only process objects that include Siduri's signed upload metadata.
+`functions/gif-generator` creates GIF thumbnails. `functions/video-subtitles` creates VTT subtitles and owns its configuration in its component README. Both functions process only uploads carrying Siduri's signed metadata.
 
-- `functions/gif-generator`: creates a short `.gif` beside uploaded MP4/WebM files.
-- `functions/video-subtitles`: creates `.vtt` subtitles with faster-whisper, configured for Spanish.
-
-Deploy from each function directory with its `deploy.sh`. Set `GCS_BUCKET` first. The subtitle function can also use `HF_TOKEN`.
-
-Function dependencies are exact Python 3.11 locks. Edit `requirements.in`, then regenerate the adjacent deploy file:
+Deploy from the relevant function directory with `GCS_BUCKET` configured. Direct dependencies live in `requirements.in`; `requirements.txt` is the generated Python 3.11 lock:
 
 ```bash
 uv pip compile --python-version 3.11 --generate-hashes \
   requirements.in --output-file requirements.txt
 ```
 
-## API
+## HTTP API Status
 
-The app mounts the API at `/api`. It also mounts `/video/studio/api` for the existing load-balancer path setup.
+The browser UI uses `/api` and `/video/studio/api`. Integration tokens can authenticate trusted clients, but endpoint compatibility is not yet a stable public contract. Treat route definitions and tests as the current implementation source of truth until a versioned API is released.
 
-| Area | Endpoints |
-| --- | --- |
-| Auth | `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `POST /api/auth/refresh` |
-| Password reset | `POST /api/auth/forgot-password`, `POST /api/auth/reset-password` |
-| Invitations | `POST /api/auth/invitations`, `GET /api/auth/invitations` |
-| API tokens | `POST /api/auth/api-token`, `GET /api/auth/api-tokens`, `DELETE /api/auth/api-tokens/:id` |
-| Upload | `POST /api/upload` |
-| Videos | `POST /api/videos`, `GET /api/videos`, `GET /api/videos/:id`, `PATCH /api/videos/:id`, `DELETE /api/videos/:id` |
-| Sharing | `POST /api/videos/:id/share` |
-| Tracking | `POST /api/track`, `POST /api/track/beacon` |
-| Notifications | `GET /api/settings/notifications`, `POST /api/settings/notifications/teams`, `POST /api/settings/notifications/email` |
-| Health | `GET /health` |
+## Viewer Data and Security
 
-## Security Notes
+- Authentication cookies are HTTP-only; production cookies require HTTPS.
+- Passwords are hashed with bcrypt. Login and registration are rate limited.
+- GCS objects remain private and are read through expiring signed URLs.
+- Recipient PII is stored server-side, not embedded in new share tokens.
+- The viewer sees an analytics disclosure before playback starts tracking.
+- Expired analytics are removed according to `VIEW_DATA_RETENTION_DAYS`; deleting a video immediately removes its analytics and recipient shares.
+- Report vulnerabilities according to [SECURITY.md](SECURITY.md). Do not disclose secrets or exploit details in a public issue.
 
-- JWTs are stored in httpOnly cookies. Production mode sets secure cookie behavior for HTTPS.
-- Passwords are hashed with bcrypt.
-- Login and registration are rate limited to 10 attempts per 15 minutes.
-- General API requests are rate limited to 60 requests per minute.
-- Helmet is enabled with a CSP that allows the CDN and WebAssembly needs of Video.js and MediaPipe.
-- CORS defaults to localhost. Set `ALLOWED_ORIGINS` in production.
-- Signed read URLs are minted for owner sessions and tokenized share links.
-- Signed upload URLs expire after one hour and include exact size plus Siduri upload metadata headers. Anyone with a leaked valid URL can still upload during that window.
+## Screenshots
 
-## License
+These screenshots document the initial 2026 public UI and may differ from later releases.
 
-Apache License 2.0. See [LICENSE](LICENSE).
+![Siduri dashboard](docs/screenshot-dashboard.png)
 
-Attribution notices are listed in [NOTICE](NOTICE).
+![Siduri recording interface](docs/screenshot-record.png)
+
+## Contributing and License
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for validation and change rules.
+
+Siduri is licensed under the Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

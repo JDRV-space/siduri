@@ -1,6 +1,6 @@
 # Siduri Subtitle Generation
 
-Automatic Spanish subtitle generation using faster-whisper.
+Subtitle generation using faster-whisper. Spanish is the default language.
 
 ## Architecture
 
@@ -35,7 +35,6 @@ GCS_BUCKET=your-bucket python test_local.py /path/to/video.mp4
 ```bash
 # Set required environment variables
 export GCS_BUCKET=your-video-bucket
-export HF_TOKEN=your-huggingface-token  # Optional but recommended
 
 # Deploy Cloud Function
 ./deploy.sh
@@ -48,28 +47,29 @@ gcloud functions describe siduri-subtitles \
 
 ## Configuration
 
-| Variable | Value | Description |
+| Environment variable | Default | Description |
 |----------|-------|-------------|
 | MODEL_SIZE | small | Whisper model (tiny/base/small/medium/large) |
 | DEVICE | cpu | Processing device |
 | COMPUTE_TYPE | int8 | CPU optimization type |
-| LANGUAGE | es | Spanish (es-ES) |
+| LANGUAGE | es | Transcription language |
 | MAX_SUBTITLE_VIDEO_BYTES | 104857600 | Max input size in bytes |
-| MEMORY | 4GB | Cloud Function memory |
-| TIMEOUT | 540s | 9 minutes max |
 
-## Cost Estimate
+The deployment script separately owns the Cloud Function resource settings: 4 GB memory, 540-second timeout, and a maximum of three instances.
 
-- **faster-whisper small model**: ~1-2min processing per 1min video
-- **Cloud Function**: $0.40/million invocations + compute time
-- **Typical 5min video**: ~$0.001-0.002 per video
+## Cost Planning
+
+Cost and processing time depend on region, model size, video duration, memory, and current Google Cloud pricing. Measure representative videos in the target project before setting a budget; this repository does not publish a per-video cost estimate.
 
 ## Testing
 
-1. Upload video to Siduri
-2. Check Cloud Function logs: `gcloud functions logs read siduri-subtitles --gen2 --region=us-central1`
-3. Verify VTT file in GCS: `gsutil ls gs://$GCS_BUCKET/videos/*.vtt`
-4. Open video in player - subtitles should load automatically
+Run the isolated handler tests before deployment:
+
+```bash
+python3 -m unittest discover -s . -p test_main.py
+```
+
+For a deployed verification, upload a Siduri-stamped video, check the function logs, verify the adjacent VTT object, and open the video through Siduri.
 
 ## Troubleshooting
 
@@ -82,7 +82,7 @@ gcloud functions describe siduri-subtitles \
 **Processing timeout:**
 - Increase `--timeout` in deploy.sh
 - Use smaller model (tiny instead of small)
-- Reduce `--beam-size` in main.py
+- Reduce the `beam_size` argument in `main.py`
 
 **Poor transcription quality:**
 - Upgrade to larger model (medium or large-v2)

@@ -1,17 +1,9 @@
-const nodemailer = require('nodemailer');
+const { createSmtpTransporter } = require('./smtp');
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
+const transporter = createSmtpTransporter();
 
 async function sendPasswordResetEmail(email, resetUrl) {
-  if (!process.env.SMTP_HOST) {
+  if (!transporter) {
     // Only log in development - never log sensitive URLs in production
     if (process.env.NODE_ENV !== 'production') {
       console.log('SMTP not configured. Reset URL:', resetUrl);

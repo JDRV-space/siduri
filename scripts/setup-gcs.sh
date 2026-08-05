@@ -11,6 +11,9 @@ fi
 readonly BUCKET_NAME="$1"
 readonly ALLOWED_ORIGIN="$2"
 readonly PROJECT_ID="${3:-$(gcloud config get-value project)}"
+readonly REGION="${REGION:-us-central1}"
+readonly SERVICE_ACCOUNT_NAME="${SIDURI_SERVICE_ACCOUNT_NAME:-siduri-sa}"
+readonly SERVICE_ACCOUNT_EMAIL="$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com"
 
 if [[ ! "$ALLOWED_ORIGIN" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$ ]]; then
   echo "Allowed origin must be an exact HTTP(S) origin."
@@ -21,13 +24,20 @@ cors_file="$(mktemp "${TMPDIR:-/tmp}/siduri-cors.XXXXXX.json")"
 readonly cors_file
 trap 'rm -f "$cors_file"' EXIT
 
-echo "Creating GCS bucket: $BUCKET_NAME"
+if gcloud storage buckets describe "gs://$BUCKET_NAME" --project="$PROJECT_ID" >/dev/null 2>&1; then
+  echo "Using existing GCS bucket: $BUCKET_NAME"
+else
+  echo "Creating GCS bucket: $BUCKET_NAME"
+  gcloud storage buckets create "gs://$BUCKET_NAME" \
+    --project="$PROJECT_ID" \
+    --location="$REGION" \
+    --uniform-bucket-level-access
+fi
 
-# Create bucket
-gcloud storage buckets create "gs://$BUCKET_NAME" \
-  --project="$PROJECT_ID" \
-  --location=us-central1 \
-  --uniform-bucket-level-access
+# Enforce uniform bucket-level access for both new and reused buckets.
+gcloud storage buckets update "gs://$BUCKET_NAME" \
+  --uniform-bucket-level-access \
+  --project="$PROJECT_ID"
 
 # Set CORS configuration
 cat > "$cors_file" << EOF
@@ -50,7 +60,23 @@ EOF
 
 gcloud storage buckets update "gs://$BUCKET_NAME" --cors-file="$cors_file"
 
-echo "Done! Bucket $BUCKET_NAME created with CORS enabled"
-echo "For Cloud Run, create a service account with Storage Object Admin role:"
-echo "  gcloud iam service-accounts create siduri-sa --display-name='Siduri Service Account'"
-echo "  gcloud projects add-iam-policy-binding $PROJECT_ID --member='serviceAccount:siduri-sa@$PROJECT_ID.iam.gserviceaccount.com' --role='roles/storage.objectAdmin'"
+if ! gcloud iam service-accounts describe "$SERVICE_ACCOUNT_EMAIL" --project="$PROJECT_ID" >/dev/null 2>&1; then
+  gcloud iam service-accounts create "$SERVICE_ACCOUNT_NAME" \
+    --display-name="Siduri Service Account" \
+    --project="$PROJECT_ID"
+fi
+
+# Bucket-scoped object access for uploads, playback, and deletion.
+gcloud storage buckets add-iam-policy-binding "gs://$BUCKET_NAME" \
+  --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \
+  --role="roles/storage.objectUser" \
+  --project="$PROJECT_ID"
+
+# Signed URLs require iam.serviceAccounts.signBlob on the runtime identity.
+gcloud iam service-accounts add-iam-policy-binding "$SERVICE_ACCOUNT_EMAIL" \
+  --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \
+  --role="roles/iam.serviceAccountTokenCreator" \
+  --project="$PROJECT_ID"
+
+echo "Bucket CORS and least-privilege service identity are configured."
+echo "Deploy the app with: --service-account=$SERVICE_ACCOUNT_EMAIL"

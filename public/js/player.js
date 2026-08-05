@@ -22,6 +22,8 @@ const captionsOverlay = document.getElementById('captionsOverlay');
 const videoTitle = document.getElementById('videoTitle');
 const videoMeta = document.getElementById('videoMeta');
 const subtitleControls = document.getElementById('subtitleControls');
+const trackingNotice = document.getElementById('trackingNotice');
+const trackingNoticeText = document.getElementById('trackingNoticeText');
 
 // State
 let player = null;
@@ -48,6 +50,11 @@ async function init() {
       throw new Error('Video not found');
     }
     videoData = await res.json();
+
+    if (videoData.tracking?.enabled) {
+      trackingNoticeText.textContent = `This recipient link records watch progress and a session identifier, associates them with the recipient details supplied by the sender, and retains viewer analytics for up to ${videoData.tracking.retentionDays} days. The video owner may receive threshold notifications.`;
+      trackingNotice.style.display = 'flex';
+    }
 
     // Update UI
     videoTitle.textContent = videoData.title || 'untitled';
